@@ -1,0 +1,3106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chore & Study: 3D AFK Grassland Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        grass: {
+                            light: '#a3e635',
+                            DEFAULT: '#84cc16',
+                            dark: '#4d7c0f',
+                        },
+                        cozy: {
+                            brown: '#78350f',
+                            cream: '#fef3c7',
+                            wood: '#b45309'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+        }
+        h1, h2, h3, button, .font-cozy {
+            font-family: 'Fredoka', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .pixelated {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+    <!-- fflate needed globally by FBXLoader for decompression -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.min.js"></script>
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- GLTF Loader for GLB Fallbacks -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- FBX Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 overflow-hidden h-screen flex flex-col md:flex-row">
+
+    <!-- SIDEBAR: Stats, Logs, Profile & Settings -->
+    <aside id="sidebar" class="w-full md:w-96 bg-white border-r-2 border-slate-200 flex flex-col h-1/2 md:h-full z-10 transition-all duration-300 relative shadow-lg">
+        <!-- Brand / Header -->
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 to-green-500 text-white">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl">🌾</span>
+                <div>
+                    <h1 class="text-xl font-bold leading-none">Cozy Study Farm</h1>
+                    <span class="text-xs text-emerald-100 font-medium">3D AFK Companion</span>
+                </div>
+            </div>
+            <button id="toggle-sidebar" class="hidden md:flex p-1.5 rounded-full hover:bg-white/20 transition" title="Minimize Sidebar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7"/></svg>
+            </button>
+        </div>
+
+        <!-- Scrollable Sidebar Content -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-6">
+            
+            <!-- Farmhouse Overlay Banner (Visible when inside Farmhouse) -->
+            <div id="farmhouse-focus-banner" class="hidden p-4 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl shadow-lg border-2 border-amber-300 animate-bounce">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🏡</span>
+                    <div>
+                        <h4 class="font-bold text-sm">Inside Farmhouse</h4>
+                        <p class="text-[10px] text-amber-100">Review, save or load your study milestones!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Info & Avatar Upload (Model Customizer) -->
+            <section class="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Your Study Avatar (FBX / GLB)</h3>
+                <div class="flex items-center gap-4">
+                    <div id="avatar-icon-preview" class="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl border border-emerald-200 shadow-inner shrink-0">
+                        👤
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-slate-800 text-sm truncate" id="avatar-model-name">Default Farmer</h4>
+                        <p class="text-[10px] text-slate-500 mb-2">Upload FBX/GLB, textures & animations</p>
+                        <button id="reset-avatar-btn" onclick="resetToDefaultPlayer()" class="hidden px-2.5 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-300 transition">
+                            Reset to Default
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pt-2 border-t border-slate-200/60">
+                    <!-- Model Upload (Unified Input) -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">1. Model File (FBX or GLB)</label>
+                        <label class="flex items-center justify-center w-full py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-50 transition shadow-sm">
+                            📁 Upload Model (.fbx, .glb)
+                            <input type="file" id="avatar-upload-model" accept=".fbx,.glb,.gltf" class="hidden" />
+                        </label>
+                    </div>
+
+                    <!-- PNG Texture Upload -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">2. PNG / JPG Texture Map</label>
+                        <label class="flex items-center justify-center w-full py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-50 transition shadow-sm">
+                            🎨 Upload Texture (.png/.jpg)
+                            <input type="file" id="avatar-upload-texture" accept=".png,.jpg,.jpeg" class="hidden" />
+                        </label>
+                    </div>
+
+                    <!-- Animation Upload -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">3. Add Animations (.fbx, .glb)</label>
+                        <label class="flex items-center justify-center w-full py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-50 transition shadow-sm mb-2">
+                            🏃 Upload Animation File
+                            <input type="file" id="avatar-upload-anim" accept=".fbx,.glb,.gltf" class="hidden" />
+                        </label>
+                        
+                        <!-- Added Animations List -->
+                        <div class="bg-white rounded-xl border border-slate-200/80 p-2 space-y-1">
+                            <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Loaded Clips</span>
+                            <div id="anim-list-container" class="space-y-1 max-h-24 overflow-y-auto pr-1 text-[11px]">
+                                <div class="text-[10px] text-slate-400 text-center py-1">No custom animation tracks loaded.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quick Stats -->
+            <section>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Overall Progress</h3>
+                    <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 font-bold rounded-full" id="stats-level">Level 1 Student</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200/80 p-3 rounded-2xl text-center">
+                        <span class="text-2xl">⏳</span>
+                        <div class="text-xs text-amber-800 font-semibold mt-1">Total Study</div>
+                        <div class="text-lg font-bold text-amber-900" id="stat-total-time">0m</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200/80 p-3 rounded-2xl text-center">
+                        <span class="text-2xl">🏆</span>
+                        <div class="text-xs text-indigo-800 font-semibold mt-1">Sessions</div>
+                        <div class="text-lg font-bold text-indigo-900" id="stat-total-sessions">0</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NPC Tasks Breakdown -->
+            <section class="space-y-2">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Chore Achievements</h3>
+                <!-- Rabbit -->
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🐇</span>
+                        <div>
+                            <div class="font-bold text-xs">Rabbit Feeding</div>
+                            <div class="text-[10px] text-slate-400">Boosts Focus</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md" id="stat-rabbit">0 times</span>
+                </div>
+                <!-- Cow -->
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🐄</span>
+                        <div>
+                            <div class="font-bold text-xs">Cow Milking</div>
+                            <div class="text-[10px] text-slate-400">Fosters Diligence</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md" id="stat-cow">0 times</span>
+                </div>
+                <!-- Horse -->
+                <div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🐎</span>
+                        <div>
+                            <div class="font-bold text-xs">Horse Walking</div>
+                            <div class="text-[10px] text-slate-400">Builds Endurance</div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md" id="stat-horse">0 times</span>
+                </div>
+            </section>
+
+            <!-- Save, Load & Export Progress -->
+            <section class="bg-amber-50/50 p-4 rounded-2xl border border-amber-200/50 space-y-3">
+                <h3 class="text-sm font-semibold text-amber-800 font-cozy">Track Progress (For Teachers)</h3>
+                <p class="text-[11px] text-amber-700 leading-relaxed">Save state or export encrypted report cards for verification. Data is encoded to prevent manual alterations.</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="saveStateToLocalStorage()" class="flex items-center justify-center gap-1 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition shadow">
+                        💾 Save State
+                    </button>
+                    <button onclick="exportProgressJSON()" class="flex items-center justify-center gap-1 py-1.5 bg-amber-700 text-white rounded-lg text-xs font-bold hover:bg-amber-800 transition shadow">
+                        📤 Export Report
+                    </button>
+                </div>
+                <div class="pt-1">
+                    <label class="block text-center w-full py-1.5 bg-white border border-amber-300 text-amber-800 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-100/50 transition">
+                        📥 Import Encrypted Progress
+                        <input type="file" id="import-progress-file" accept=".cozy" class="hidden" />
+                    </label>
+                </div>
+            </section>
+
+            <!-- Study History Logs -->
+            <section>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Session History</h3>
+                    <button onclick="triggerClearLogsConfirmation()" class="text-[10px] text-red-500 hover:underline">Clear All</button>
+                </div>
+                <div id="log-list" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <!-- Logs dynamically added here -->
+                    <div class="text-xs text-slate-400 text-center py-4">No study sessions recorded yet. Hop over to an animal to start!</div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Footer Notes -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+            <span class="text-[10px] text-slate-400">Built with 💚 & Three.js</span>
+            <button onclick="openAmbientAudioModal()" class="text-xs flex items-center gap-1 text-slate-600 hover:text-emerald-600 transition">
+                🔊 Soundscape
+            </button>
+        </div>
+    </aside>
+
+    <!-- FLOATING SIDEBAR OPENER (When collapsed) -->
+    <button id="collapsed-sidebar-btn" class="absolute left-4 top-4 z-20 bg-slate-800 text-white p-2.5 rounded-full shadow-lg hover:bg-slate-700 transition hidden">
+        🌾
+    </button>
+
+    <!-- MAIN VIEWPORT PANEL -->
+    <main id="main-viewport" class="flex-1 relative h-1/2 md:h-full flex flex-col transition-all duration-300">
+        <!-- 3D Canvas Container -->
+        <div id="canvas-container" class="w-full flex-1 relative bg-sky-200 transition-all duration-300">
+            <!-- Farmhouse Dismiss Overlay -->
+            <div id="farmhouse-dismiss-overlay" class="absolute inset-0 bg-transparent cursor-pointer z-[1] hidden" onclick="handleFarmhouseDismissClick()"></div>
+
+            <!-- Loading Indicator -->
+            <div id="canvas-loading" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white transition-opacity duration-500">
+                <div class="relative w-16 h-16 animate-bounce mb-3 text-5xl">🌾</div>
+                <h3 class="font-bold text-lg">Growing the Grassland...</h3>
+                <p class="text-xs text-slate-200 mt-1">Drafting animal pens & hex grid</p>
+            </div>
+
+            <!-- Canvas Element -->
+            <canvas id="three-canvas" class="w-full h-full block"></canvas>
+
+            <!-- IN-GAME HUD OVERLAYS -->
+            
+            <!-- Audio Ambient Control Indicator -->
+            <div class="absolute top-4 right-4 z-10 flex gap-2">
+                <button onclick="refreshMap()" id="refresh-map-btn" class="bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-md border border-slate-200 flex items-center gap-2 hover:bg-slate-100 transition text-xs font-semibold text-slate-700" title="Regenerate Grassland Map">
+                    🔄 Refresh Map
+                </button>
+                <button onclick="recenterCamera()" id="recenter-camera-btn" class="bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-md border border-slate-200 flex items-center gap-2 hover:bg-slate-100 transition text-xs font-semibold text-slate-700" title="Recenter Camera on Avatar">
+                    🎥 Recenter
+                </button>
+                <button onclick="toggleSidebarMenu()" id="sidebar-toggle-hud" class="bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-md border border-slate-200 flex items-center gap-2 hover:bg-slate-100 transition text-xs font-semibold text-slate-700" title="Toggle Sidebar Menu">
+                    📋 Menu
+                </button>
+                <button onclick="toggleAmbientSound()" id="sound-indicator" class="bg-white/90 backdrop-blur px-3 py-2 rounded-2xl shadow-md border border-slate-200 flex items-center gap-2 hover:bg-slate-100 transition text-xs font-semibold text-slate-700">
+                    <!-- Audio Context initialized gracefully on interaction -->
+                    🔇 Sound Off
+                </button>
+            </div>
+
+            <!-- Directional Navigation HUD for tactile / touch controls -->
+            <div class="absolute bottom-4 left-4 z-10 bg-white/95 backdrop-blur-md p-4 rounded-3xl shadow-xl border border-slate-200 max-w-sm flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Hop Controls</h4>
+                    <span class="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded">Chess Hop Style</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 w-32 h-24 mx-auto items-center">
+                    <div></div>
+                    <button onclick="movePlayerByDelta(0, -1)" class="bg-slate-100 hover:bg-emerald-100 active:scale-95 transition rounded-xl p-2 font-bold text-sm border border-slate-200" title="Move Up-Right">↗️</button>
+                    <div></div>
+                    
+                    <button onclick="movePlayerByDelta(-1, 0)" class="bg-slate-100 hover:bg-emerald-100 active:scale-95 transition rounded-xl p-2 font-bold text-sm border border-slate-200" title="Move Left">⬅️</button>
+                    <div class="flex items-center justify-center text-lg">👤</div>
+                    <button onclick="movePlayerByDelta(1, 0)" class="bg-slate-100 hover:bg-emerald-100 active:scale-95 transition rounded-xl p-2 font-bold text-sm border border-slate-200" title="Move Right">➡️</button>
+                    
+                    <div></div>
+                    <button onclick="movePlayerByDelta(0, 1)" class="bg-slate-100 hover:bg-emerald-100 active:scale-95 transition rounded-xl p-2 font-bold text-sm border border-slate-200" title="Move Down-Left">↙️</button>
+                    <div></div>
+                </div>
+                <p class="text-[10px] text-slate-500 text-center">Click adjacent hexes directly on the map to jump!</p>
+            </div>
+
+            <!-- Game Legend / Hints -->
+            <div class="absolute top-4 left-4 z-10 hidden sm:block bg-slate-900/85 backdrop-blur text-white p-3 rounded-2xl shadow-lg border border-slate-700/50 text-xs space-y-1">
+                <div class="font-bold text-emerald-400 flex items-center gap-1.5">🗺️ Grassland Legend:</div>
+                <div class="flex items-center gap-1.5"><span>🐇</span> <strong>Rabbit Pen</strong> (Hex: q:1, r:-2)</div>
+                <div class="flex items-center gap-1.5"><span>🐄</span> <strong>Cow Barn</strong> (Hex: q:-2, r:1)</div>
+                <div class="flex items-center gap-1.5"><span>🐎</span> <strong>Horse Corral</strong> (Hex: q:2, r:1)</div>
+                <div class="flex items-center gap-1.5"><span>🏡</span> <strong>Farmhouse</strong> (Hex: q:-1, r:-1)</div>
+                <div class="text-[10px] text-sky-300 font-semibold pt-1">💧 Co-op Lake spans 2 cells!</div>
+                <div class="text-[10px] text-red-300 font-semibold">🌲 Wood tiles are blocked!</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- OVERLAY: INTERACTION MODAL -->
+    <div id="npc-modal" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-300">
+            <!-- Modal Header -->
+            <div id="npc-modal-header" class="p-6 text-white bg-gradient-to-r relative">
+                <!-- Close Button -->
+                <button onclick="closeNPCModal()" class="absolute top-4 right-4 text-white/80 hover:text-white bg-black/10 rounded-full p-1 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div class="flex items-center gap-4">
+                    <span id="npc-modal-emoji" class="text-5xl">🐇</span>
+                    <div>
+                        <h2 id="npc-modal-title" class="text-2xl font-bold">Interact with NPC</h2>
+                        <p id="npc-modal-subtitle" class="text-xs text-white/90">Work near them to accomplish the study task!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Form Content -->
+            <form id="study-form" onsubmit="startStudySession(event)" class="p-6 space-y-4">
+                <input type="hidden" id="npc-id-input">
+                
+                <!-- Preset Subject Selector Dropdown -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Study Subject</label>
+                    <select id="subject-selector" onchange="handleSubjectSelectionChange()" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm">
+                        <option value="Mathematics">📐 Mathematics</option>
+                        <option value="Computer Science">💻 Computer Science</option>
+                        <option value="Literature & Language">📚 Literature & Language</option>
+                        <option value="History & Social Studies">🏛️ History & Social Studies</option>
+                        <option value="Natural Sciences">🔬 Natural Sciences (Biology / Chemistry / Physics)</option>
+                        <option value="Creative Arts">🎨 Creative Arts & Music</option>
+                        <option value="custom">✍️ Custom Subject...</option>
+                    </select>
+                </div>
+
+                <div id="custom-subject-container" class="hidden">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Enter Custom Subject</label>
+                    <input type="text" id="subject-input" placeholder="e.g., Organic Chemistry, AP Calculus Unit 3..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Interaction Type</label>
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3">
+                        <span id="interaction-emoji" class="text-2xl">🥕</span>
+                        <div>
+                            <div id="interaction-name" class="font-bold text-xs text-slate-800">Feeding the Rabbit</div>
+                            <div id="interaction-desc" class="text-[10px] text-slate-500">Your avatar will dynamically feed carrots to the bunny while you work.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Target Study Time (Optional)</label>
+                    <select id="duration-input" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition text-sm">
+                        <option value="0">⏳ Stopwatch (Unlimited Time)</option>
+                        <option value="5">5 Minutes</option>
+                        <option value="15">15 Minutes</option>
+                        <option value="25">25 Minutes (Pomodoro)</option>
+                        <option value="45">45 Minutes</option>
+                        <option value="60">60 Minutes</option>
+                    </select>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-emerald-100 active:scale-95 transition flex items-center justify-center gap-2">
+                        🚀 Start Study Companion Mode
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- OVERLAY: ACTIVE STUDY / AFK PANEL (Locks UI during AFK focus sessions) -->
+    <div id="active-study-overlay" class="fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6 hidden overflow-y-auto">
+        <div class="text-center max-w-3xl w-full space-y-6 my-auto py-8">
+            
+            <!-- Header Status -->
+            <div class="space-y-1">
+                <span id="active-avatar-icon" class="text-5xl animate-bounce duration-1000 inline-block">🐇</span>
+                <h1 class="text-2xl md:text-3xl font-bold text-white font-cozy">Session in Progress</h1>
+                <p id="active-task-desc" class="text-emerald-400 text-xs font-semibold tracking-wide uppercase">Feeding the Rabbit</p>
+            </div>
+
+            <!-- ANIMATED PROCEDURAL GIF AND AI COMPANION CHATBOX CONTAINER -->
+            <div class="flex flex-col md:flex-row items-stretch justify-center gap-4 max-w-3xl mx-auto w-full">
+                <!-- Retro Procedural GIF Player -->
+                <div class="bg-slate-900 border border-slate-700/60 p-4 rounded-3xl shadow-2xl flex flex-col items-center justify-center shrink-0 w-full md:w-52 h-52 relative">
+                    <canvas id="gif-canvas" width="140" height="140" class="w-36 h-36 pixelated bg-slate-950/80 rounded-xl border border-slate-800"></canvas>
+                    <span class="absolute top-2 right-2 flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-widest mt-2 font-bold font-cozy">Procedural GIF</span>
+                </div>
+
+                <!-- AI Persona Companion Chat Box -->
+                <div class="flex-1 bg-white/5 border border-white/10 backdrop-blur-md p-5 rounded-3xl text-left flex flex-col justify-between space-y-3 h-80 md:h-auto min-h-[260px]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div id="companion-avatar" class="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center text-xl border border-white/10 shadow-inner">
+                                🦉
+                            </div>
+                            <div>
+                                <h4 id="companion-name" class="font-bold text-white text-sm leading-tight">Barnaby</h4>
+                                <p id="companion-role" class="text-[9px] text-emerald-400 font-extrabold uppercase tracking-wider">Cozy Tutor</p>
+                            </div>
+                        </div>
+                        <div class="text-[9px] text-slate-400 bg-black/35 px-2.5 py-1 rounded-lg">
+                            <span id="companion-status" class="text-emerald-400 font-bold">Listening</span>
+                        </div>
+                    </div>
+
+                    <!-- Chat History Pane -->
+                    <div id="companion-chat-log" class="flex-1 bg-black/25 p-3 rounded-2xl border border-white/5 overflow-y-auto space-y-2 text-xs max-h-40 md:max-h-56 flex flex-col">
+                        <!-- Messages render here -->
+                    </div>
+
+                    <!-- Chat Input Form -->
+                    <form onsubmit="sendSessionChatMessage(event)" class="flex gap-2">
+                        <input type="text" id="chat-input-field" placeholder="Ask a study question..." class="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400">
+                        <button type="submit" id="chat-send-btn" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow flex items-center justify-center">
+                            Send
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Subject Text -->
+            <div class="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 shadow-xl inline-block max-w-full">
+                <span class="text-[9px] text-slate-400 font-extrabold uppercase block tracking-wider mb-0.5">Subject of Study</span>
+                <p id="active-subject" class="text-md font-bold text-white italic">"Organic Chemistry - Polymeric Chain Reactions"</p>
+            </div>
+
+            <!-- Digital Timer -->
+            <div class="text-5xl md:text-6xl font-black font-cozy text-white tracking-widest py-1 drop-shadow-lg" id="active-timer-display">
+                00:00:00
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progress-bar-container" class="w-full max-w-md bg-white/10 h-3 rounded-full overflow-hidden mx-auto border border-white/5 relative hidden">
+                <div id="progress-bar-fill" class="bg-gradient-to-r from-emerald-400 to-green-500 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <!-- AFK Chore Animation Status Note -->
+            <p class="text-slate-400 text-[11px]">
+                Observe the 3D map! Your customized avatar is executing chore animations in real-time.
+            </p>
+
+            <!-- Interactive Avatar Reacting Box and Notes -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto items-stretch">
+                <!-- Mini viewport for uploaded/default avatar reacting -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-2 flex flex-col items-center justify-center h-24 md:h-full relative overflow-hidden">
+                    <canvas id="active-avatar-canvas" width="80" height="80" class="block w-20 h-20 pointer-events-none rounded-lg bg-black/40"></canvas>
+                    <span class="text-[8px] text-zinc-400 tracking-wider uppercase block mt-1">Status: Reacting</span>
+                </div>
+
+                <!-- Distraction Notepad -->
+                <div class="md:col-span-2 space-y-1.5 text-left">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Session Notes</label>
+                    <textarea id="study-notes" oninput="triggerPreviewAvatarReaction()" placeholder="Write down formulas, key insights, or distractions to clear your mind..." class="w-full h-20 px-4 py-2.5 bg-white/5 border border-white/10 text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs placeholder-slate-500 resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- End Session Button -->
+            <div class="pt-2 flex flex-col sm:flex-row justify-center gap-3 max-w-xs mx-auto">
+                <button onclick="finishStudySession()" class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl shadow-lg transition active:scale-95">
+                    🏁 Complete Task
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IN-APP SAFE OVERLAYS FOR MODALS & CONFIRMATIONS -->
+    <!-- OVERLAY: CUSTOM ALERT/CONFIRM DIALOG -->
+    <div id="custom-confirm-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">⚠️ Dangerous Operation</h3>
+            <p id="custom-confirm-text" class="text-xs text-slate-600 leading-relaxed">Are you sure you want to perform this action? This operation cannot be undone.</p>
+            
+            <div class="flex gap-2 justify-end pt-2">
+                <button id="custom-confirm-cancel" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                    Cancel
+                </button>
+                <button id="custom-confirm-proceed" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-red-100">
+                    Yes, Proceed
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO AMBIENT OPTION MODAL -->
+    <div id="audio-modal" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">🌲 Synthesizer Soundscape</h3>
+            <p class="text-xs text-slate-500">We generate low-frequency procedural ambient wind and birdsongs using direct Web Audio synths for concentration.</p>
+            
+            <div class="space-y-3">
+                <button onclick="setSoundVolume('wind')" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span>🍃 Cozy Wind Ambience</span>
+                    <span id="ambient-wind-status" class="text-emerald-600 font-extrabold">Active</span>
+                </button>
+                <button onclick="setSoundVolume('bell')" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition flex items-center justify-between text-xs font-semibold text-slate-700">
+                    <span>🔔 Relaxing Chimes</span>
+                    <span id="ambient-bell-status" class="text-emerald-600 font-extrabold">Active</span>
+                </button>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="closeAmbientAudioModal()" class="w-full py-2 bg-slate-800 text-white font-bold rounded-xl text-xs">
+                    Close Sound Manager
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN APP JAVASCRIPT -->
+    <script>
+        // Set window fflate binding strictly globally to guarantee loader integrity
+        if (typeof window !== 'undefined' && typeof fflate !== 'undefined') {
+            window.fflate = fflate;
+        }
+
+        const XOR_SECRET_KEY = "COZY_STUDY_FARM_COMPANION";
+        let studyLogs = [];
+        let achievements = {
+            rabbit: 0,
+            cow: 0,
+            horse: 0,
+            totalMinutes: 0
+        };
+
+        let previewScene, previewCamera, previewRenderer, previewClone;
+        let previewActionTimer = 0;
+        let previewAnimationType = 'idle'; // 'idle', 'jump', 'sway', 'rotate_cw', 'rotate_ccw'
+
+        // Custom non-blocking interactive confirmation engine
+        let confirmProceedCallback = null;
+
+        function showInAppConfirmation(text, onProceed) {
+            document.getElementById('custom-confirm-text').textContent = text;
+            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+            
+            confirmProceedCallback = onProceed;
+        }
+
+        document.getElementById('custom-confirm-cancel').addEventListener('click', () => {
+            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            confirmProceedCallback = null;
+        });
+
+        document.getElementById('custom-confirm-proceed').addEventListener('click', () => {
+            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            if (confirmProceedCallback) {
+                confirmProceedCallback();
+            }
+            confirmProceedCallback = null;
+        });
+
+        // Standard XOR encryptor/decryptor
+        function xorString(input, key) {
+            let output = "";
+            for (let i = 0; i < input.length; i++) {
+                let charCode = input.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+                output += String.fromCharCode(charCode);
+            }
+            return output;
+        }
+
+        function serializeState(obj) {
+            const rawJson = JSON.stringify(obj);
+            const xorData = xorString(rawJson, XOR_SECRET_KEY);
+            return btoa(unescape(encodeURIComponent(xorData)));
+        }
+
+        function deserializeState(encodedStr) {
+            try {
+                const xorData = decodeURIComponent(escape(atob(encodedStr)));
+                const decryptedJson = xorString(xorData, XOR_SECRET_KEY);
+                return JSON.parse(decryptedJson);
+            } catch (err) {
+                console.error("XOR Decryption/Parsing error:", err);
+                return null;
+            }
+        }
+
+        function loadStateFromLocalStorage() {
+            try {
+                const encLogs = localStorage.getItem('study_farm_logs_encrypted');
+                const encAch = localStorage.getItem('study_farm_achievements_encrypted');
+                
+                if (encLogs) {
+                    const decrypted = deserializeState(encLogs);
+                    if (decrypted) studyLogs = decrypted;
+                }
+                if (encAch) {
+                    const decrypted = deserializeState(encAch);
+                    if (decrypted) achievements = decrypted;
+                }
+            } catch (e) {
+                console.error("Local storage corruption detected. Resetting stats.", e);
+            }
+            updateSidebarUI();
+        }
+
+        function saveStateToLocalStorage() {
+            const encLogs = serializeState(studyLogs);
+            const encAch = serializeState(achievements);
+            localStorage.setItem('study_farm_logs_encrypted', encLogs);
+            localStorage.setItem('study_farm_achievements_encrypted', encAch);
+            showNotification("Cozy state securely saved!", "success");
+        }
+
+        function exportProgressJSON() {
+            const outputData = {
+                exportedAt: new Date().toISOString(),
+                studentLevel: getStudentLevel(),
+                achievements: achievements,
+                studyLogs: studyLogs
+            };
+            
+            const encryptedPayload = serializeState(outputData);
+            const blob = new Blob([encryptedPayload], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cozy_study_report_${new Date().toISOString().slice(0,10)}.cozy`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotification("Encrypted report exported successfully!", "success");
+        }
+
+        document.getElementById('import-progress-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const decryptedData = deserializeState(evt.target.result);
+                    if (decryptedData && decryptedData.achievements && decryptedData.studyLogs) {
+                        achievements = decryptedData.achievements;
+                        studyLogs = decryptedData.studyLogs;
+                        saveStateToLocalStorage();
+                        updateSidebarUI();
+                        showNotification("Encrypted study record verified & loaded!", "success");
+                    } else {
+                        showNotification("Save file decryption failed or file is corrupted.", "error");
+                    }
+                } catch (error) {
+                    showNotification("Invalid .cozy decryption package.", "error");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function getStudentLevel() {
+            const hours = achievements.totalMinutes / 60;
+            if (hours >= 50) return "Master Academic Farmer 🎓🌾";
+            if (hours >= 20) return "Expert Agronomist Scholar 📚";
+            if (hours >= 5) return "Diligent Cultivator 🌱";
+            if (hours >= 1) return "Novice Farmer 🌾";
+            return "Young Seedling Student 🥚";
+        }
+
+        function updateSidebarUI() {
+            document.getElementById('stats-level').textContent = getStudentLevel();
+            document.getElementById('stat-total-time').textContent = `${Math.round(achievements.totalMinutes)}m`;
+            document.getElementById('stat-total-sessions').textContent = studyLogs.length;
+            document.getElementById('stat-rabbit').textContent = `${achievements.rabbit} times`;
+            document.getElementById('stat-cow').textContent = `${achievements.cow} times`;
+            document.getElementById('stat-horse').textContent = `${achievements.horse} times`;
+
+            const listEl = document.getElementById('log-list');
+            listEl.innerHTML = '';
+
+            if (studyLogs.length === 0) {
+                listEl.innerHTML = `<div class="text-xs text-slate-400 text-center py-4">No study sessions recorded yet. Hop over to an animal to start!</div>`;
+                return;
+            }
+
+            studyLogs.slice().reverse().forEach(log => {
+                const logItem = document.createElement('div');
+                logItem.className = 'p-3 bg-slate-50 border border-slate-200/60 rounded-xl space-y-1.5 shadow-sm text-xs';
+                
+                const emoji = log.npc === 'rabbit' ? '🐇' : (log.npc === 'cow' ? '🐄' : '🐎');
+                const chore = log.npc === 'rabbit' ? 'Fed Rabbit' : (log.npc === 'cow' ? 'Milked Cow' : 'Walked Horse');
+
+                logItem.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-800 text-[11px] bg-slate-200/50 px-1.5 py-0.5 rounded flex items-center gap-1">${emoji} ${chore}</span>
+                        <span class="text-[10px] text-slate-400">${log.date}</span>
+                    </div>
+                    <div class="font-bold text-slate-700">${log.subject}</div>
+                    <div class="text-slate-500 font-medium">⏳ Duration: ${Math.round(log.duration / 60)} mins (${log.duration}s)</div>
+                    ${log.notes ? `<div class="bg-white p-2 rounded border border-slate-100 text-slate-600 text-[11px] italic mt-1 leading-relaxed">${log.notes}</div>` : ''}
+                `;
+                listEl.appendChild(logItem);
+            });
+        }
+
+        function triggerClearLogsConfirmation() {
+            showInAppConfirmation(
+                "Are you sure you want to clear your entire study log history? You will lose all achievements!",
+                clearLogs
+            );
+        }
+
+        function clearLogs() {
+            studyLogs = [];
+            achievements = { rabbit: 0, cow: 0, horse: 0, totalMinutes: 0 };
+            saveStateToLocalStorage();
+            updateSidebarUI();
+            showNotification("All history logs deleted.", "success");
+        }
+
+        function showNotification(msg, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl shadow-lg border text-xs font-bold text-white transition-all duration-300 flex items-center gap-2 transform translate-y-4 pointer-events-auto ${
+                type === 'success' ? 'bg-emerald-600 border-emerald-500' :
+                type === 'error' ? 'bg-red-600 border-red-500' :
+                'bg-slate-800 border-slate-700'
+            }`;
+            toast.innerHTML = `<span>${type === 'success' ? '✨' : (type === 'error' ? '🚨' : 'ℹ️')}</span> ${msg}`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4');
+                toast.classList.add('translate-y-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        // Dropdown toggle tracker for Custom Subjects input
+        function handleSubjectSelectionChange() {
+            const selector = document.getElementById('subject-selector');
+            const customContainer = document.getElementById('custom-subject-container');
+            const inputField = document.getElementById('subject-input');
+            if (selector.value === 'custom') {
+                customContainer.classList.remove('hidden');
+                inputField.required = true;
+            } else {
+                customContainer.classList.add('hidden');
+                inputField.required = false;
+            }
+        }
+
+
+        // --- AMBIENT SOUND SYSTEM GENERATOR (WEB AUDIO API) ---
+        let audioCtx = null;
+        let windNode = null;
+        let windGain = null;
+        let soundscapeActive = false;
+        let chimeInterval = null;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            setupWindSynthesizer();
+        }
+
+        function setupWindSynthesizer() {
+            const bufferSize = 2 * audioCtx.sampleRate;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            
+            let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+            for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                output[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+                output[i] *= 0.11;
+                b6 = white * 0.115926;
+            }
+
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 400;
+
+            windGain = audioCtx.createGain();
+            windGain.gain.setValueAtTime(0, audioCtx.currentTime);
+
+            noiseSource.connect(filter);
+            filter.connect(windGain);
+            windGain.connect(audioCtx.destination);
+            noiseSource.start();
+
+            setInterval(() => {
+                if (!soundscapeActive) return;
+                const nextGain = 0.05 + Math.random() * 0.08;
+                const nextFreq = 200 + Math.random() * 300;
+                if (windGain && filter) {
+                    windGain.gain.exponentialRampToValueAtTime(nextGain, audioCtx.currentTime + 3);
+                    filter.frequency.exponentialRampToValueAtTime(nextFreq, audioCtx.currentTime + 3);
+                }
+            }, 4000);
+        }
+
+        function triggerChimeSound() {
+            if (!audioCtx || !soundscapeActive) return;
+            
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+            const frequency = notes[Math.floor(Math.random() * notes.length)];
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 4.0);
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 4.1);
+        }
+
+        function toggleAmbientSound() {
+            initAudio();
+            const btn = document.getElementById('sound-indicator');
+            if (soundscapeActive) {
+                soundscapeActive = false;
+                windGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
+                clearInterval(chimeInterval);
+                btn.innerHTML = `🔇 Sound Off`;
+                showNotification("Atmospheric sounds disabled.", "info");
+            } else {
+                soundscapeActive = true;
+                audioCtx.resume();
+                windGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 1.5);
+                chimeInterval = setInterval(() => {
+                    if (Math.random() > 0.4) triggerChimeSound();
+                }, 8000);
+                btn.innerHTML = `🔊 Ambient On`;
+                showNotification("Atmospheric study synth active!", "success");
+            }
+        }
+
+        function setSoundVolume(type) {
+            initAudio();
+            showNotification(`Adjusted ${type} synthesis channels.`, "success");
+        }
+
+        function openAmbientAudioModal() {
+            document.getElementById('audio-modal').classList.remove('hidden');
+        }
+
+        function closeAmbientAudioModal() {
+            document.getElementById('audio-modal').classList.add('hidden');
+        }
+
+
+        // --- THREE.JS 3D Farm Environment SETUP ---
+        let scene, camera, renderer, controls;
+        const hexSize = 4;
+        const hexHeight = 0.5;
+        let hexGrid = {};
+        let hexMeshes = [];
+        let playerGroup;
+        let playerModel = null;
+        let npcs = {};
+        let activeStudyNpcId = null;
+
+        // Container groups for modular unblocked map reloading
+        let hexTilesGroup;
+        let decorationsGroup;
+        let houseGroup;
+
+        let particleSystem = null;
+        let carrotMesh = null;
+        let bucketMesh = null;
+        let dynamicMilkDrops = [];
+
+        let playerHex = { q: 0, r: 0 };
+        let isMoving = false;
+
+        // Animation playback states
+        let clock = new THREE.Clock();
+        let mixer = null;
+        let activeAction = null;
+        let animationsMap = {};
+        let currentTextureMap = null;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#7dd3fc');
+            scene.fog = new THREE.FogExp2('#7dd3fc', 0.012);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 18, 25);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('three-canvas'), antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2.15;
+            controls.minDistance = 8;
+            controls.maxDistance = 60;
+
+            const ambientLight = new THREE.AmbientLight('#ffffff', 0.7);
+            scene.add(ambientLight);
+
+            const hemiLight = new THREE.HemisphereLight('#fef3c7', '#3f6212', 0.45);
+            scene.add(hemiLight);
+
+            const sunLight = new THREE.DirectionalLight('#fffbeb', 0.9);
+            sunLight.position.set(15, 30, 10);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            sunLight.shadow.bias = -0.0004;
+            scene.add(sunLight);
+
+            // Container groupings
+            hexTilesGroup = new THREE.Group();
+            scene.add(hexTilesGroup);
+            decorationsGroup = new THREE.Group();
+            scene.add(decorationsGroup);
+
+            buildHexGrassland();
+            buildFarmhouse({ q: -1, r: -1 });
+            createNPCs();
+            createDefaultPlayer();
+            createStudyEffectAssets();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onCanvasClick);
+            renderer.domElement.addEventListener('mousemove', onCanvasHover);
+
+            document.getElementById('canvas-loading').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('canvas-loading').classList.add('hidden');
+            }, 500);
+
+            animate();
+        }
+
+        function hexToPixel(q, r) {
+            const x = hexSize * (3/2 * q);
+            const z = hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r);
+            return { x, z };
+        }
+
+        function createHexagonMesh(q, r, colorHex, terrainHeight) {
+            const geom = new THREE.CylinderGeometry(hexSize * 0.95, hexSize * 0.95, terrainHeight, 6);
+            geom.rotateY(Math.PI / 6);
+            
+            const mat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(colorHex),
+                roughness: 0.85,
+                metalness: 0.02,
+                flatShading: true
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            
+            const coords = hexToPixel(q, r);
+            mesh.position.set(coords.x, terrainHeight / 2, coords.z);
+            mesh.receiveShadow = true;
+            mesh.castShadow = true;
+
+            mesh.userData = { q, r, defaultColor: colorHex, isHexTile: true, isObstacle: false, isLake: false };
+
+            hexTilesGroup.add(mesh);
+            hexMeshes.push(mesh);
+            hexGrid[`${q},${r}`] = { height: terrainHeight, mesh, isObstacle: false, isLake: false };
+
+            return mesh;
+        }
+
+        // Helper coordinate offset directions for flat-topped hex grids
+        function getAxialNeighbors(q, r) {
+            return [
+                { q: q + 1, r: r },
+                { q: q - 1, r: r },
+                { q: q, r: r + 1 },
+                { q: q, r: r - 1 },
+                { q: q + 1, r: r - 1 },
+                { q: q - 1, r: r + 1 }
+            ];
+        }
+
+        // Breadth-First Search checker verifying unblocked paths to critical targets
+        function checkReachability(tempObstacles) {
+            const targets = [
+                { q: -1, r: -1 }, // Farmhouse
+                { q: 1, r: -2 },  // Rabbit
+                { q: -2, r: 1 },  // Cow
+                { q: 2, r: 1 }   // Horse
+            ];
+            
+            const visited = new Set();
+            const queue = [{ q: 0, r: 0 }];
+            visited.add("0,0");
+            
+            let head = 0;
+            while (head < queue.length) {
+                const current = queue[head++];
+                const neighbors = getAxialNeighbors(current.q, current.r);
+                for (const n of neighbors) {
+                    const key = `${n.q},${n.r}`;
+                    const isLake = hexGrid[key] && hexGrid[key].isLake;
+                    // Lake tiles and temporary tree obstacles both act as blockers
+                    if (hexGrid[key] && !isLake && !tempObstacles.has(key) && !visited.has(key)) {
+                        visited.add(key);
+                        queue.push(n);
+                    }
+                }
+            }
+            
+            for (const t of targets) {
+                if (!visited.has(`${t.q},${t.r}`)) {
+                    return false; // Trapped target!
+                }
+            }
+            return true;
+        }
+
+        function buildHexGrassland() {
+            const mapRadius = 3;
+            const colors = ['#84cc16', '#a3e635', '#65a30d', '#22c55e', '#16a34a'];
+
+            // 1. Create standard hex base tiles first
+            for (let q = -mapRadius; q <= mapRadius; q++) {
+                const r1 = Math.max(-mapRadius, -q - mapRadius);
+                const r2 = Math.min(mapRadius, -q + mapRadius);
+                for (let r = r1; r <= r2; r++) {
+                    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+                    let tHeight = 1.0 + Math.random() * 0.25;
+                    
+                    if (q === 0 && r === 0) tHeight = 1.0;
+
+                    createHexagonMesh(q, r, randomColor, tHeight);
+                }
+            }
+
+            // 2. Locate 2 adjacent non-critical cells to turn into a Cozy Lake
+            const criticalTiles = new Set([
+                "0,0",
+                "-1,-1",
+                "1,-2",
+                "-2,1",
+                "2,1"
+            ]);
+
+            const allTiles = [];
+            for (const key in hexGrid) {
+                const tile = hexGrid[key];
+                const q = tile.mesh.userData.q;
+                const r = tile.mesh.userData.r;
+                if (!criticalTiles.has(key)) {
+                    allTiles.push({ q, r, key });
+                }
+            }
+
+            // Shuffle slightly to distribute lake procedurally across refreshes
+            for (let i = allTiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const temp = allTiles[i];
+                allTiles[i] = allTiles[j];
+                allTiles[j] = temp;
+            }
+
+            let lakePair = null;
+            for (let i = 0; i < allTiles.length; i++) {
+                const tileA = allTiles[i];
+                const neighbors = getAxialNeighbors(tileA.q, tileA.r);
+                for (const n of neighbors) {
+                    const tileB = allTiles.find(t => t.q === n.q && t.r === n.r);
+                    if (tileB && tileB.key !== tileA.key) {
+                        const testObstacles = new Set([tileA.key, tileB.key]);
+                        // Temporarily flag as lake to test reachability pathing safety
+                        hexGrid[tileA.key].isLake = true;
+                        hexGrid[tileB.key].isLake = true;
+                        if (checkReachability(testObstacles)) {
+                            lakePair = [tileA, tileB];
+                            break;
+                        } else {
+                            // Rollback path test values
+                            hexGrid[tileA.key].isLake = false;
+                            hexGrid[tileB.key].isLake = false;
+                        }
+                    }
+                }
+                if (lakePair) break;
+            }
+
+            // 3. Build the Lake! Recess water level & set as solid obstacles
+            if (lakePair) {
+                lakePair.forEach(lakeTile => {
+                    const q = lakeTile.q;
+                    const r = lakeTile.r;
+                    const key = lakeTile.key;
+
+                    // Remove initial grassy tile mesh
+                    const oldTile = hexGrid[key];
+                    if (oldTile) {
+                        hexTilesGroup.remove(oldTile.mesh);
+                        const idx = hexMeshes.indexOf(oldTile.mesh);
+                        if (idx > -1) hexMeshes.splice(idx, 1);
+                    }
+
+                    // Create pristine shiny water mesh
+                    const waterHeight = 0.4;
+                    const geom = new THREE.CylinderGeometry(hexSize * 0.95, hexSize * 0.95, waterHeight, 6);
+                    geom.rotateY(Math.PI / 6);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: new THREE.Color('#0284c7'), // Deep blue cozy water
+                        roughness: 0.15,
+                        metalness: 0.2,
+                        flatShading: true
+                    });
+                    const mesh = new THREE.Mesh(geom, mat);
+                    const coords = hexToPixel(q, r);
+                    mesh.position.set(coords.x, waterHeight / 2, coords.z);
+                    mesh.receiveShadow = true;
+                    mesh.castShadow = true;
+
+                    mesh.userData = { q, r, defaultColor: '#0284c7', isHexTile: true, isObstacle: true, isLake: true };
+                    hexTilesGroup.add(mesh);
+                    hexMeshes.push(mesh);
+                    hexGrid[key] = { height: waterHeight, mesh, isObstacle: true, isLake: true };
+
+                    // Add floating detailed lily pad decoration
+                    addLilyPad(coords.x, waterHeight, coords.z);
+                });
+            }
+
+            // 4. Identify candidate tiles for trees (exclude lake tiles now!)
+            const candidateTiles = [];
+            for (const key in hexGrid) {
+                const tile = hexGrid[key];
+                const q = tile.mesh.userData.q;
+                const r = tile.mesh.userData.r;
+                
+                const isCritical = criticalTiles.has(key);
+                const isFarmhouseNeighbor = checkHexNeighbors(q, r, -1, -1);
+                
+                if (!isCritical && !isFarmhouseNeighbor && !tile.isLake) {
+                    candidateTiles.push({ q, r, key });
+                }
+            }
+
+            // 5. Shuffle candidate tiles to distribute random tree positions
+            for (let i = candidateTiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const temp = candidateTiles[i];
+                candidateTiles[i] = candidateTiles[j];
+                candidateTiles[j] = temp;
+            }
+
+            // 6. Propose solid tree obstacles keeping reachability unblocked (Cap limit at max 8)
+            const activeObstacles = new Set();
+            let treeCount = 0;
+            const maxTrees = 8; // Density constraints imposed on Woods
+
+            for (const candidate of candidateTiles) {
+                if (treeCount >= maxTrees) break;
+
+                activeObstacles.add(candidate.key);
+
+                // Run BFS unblocked path check
+                const pathOk = checkReachability(activeObstacles);
+
+                if (pathOk) {
+                    const tile = hexGrid[candidate.key];
+                    tile.isObstacle = true;
+                    tile.mesh.userData.isObstacle = true;
+                    
+                    // Add 3D Tree
+                    addLowPolyTree(tile.mesh.position.x, tile.mesh.position.y + tile.height/2, tile.mesh.position.z);
+                    
+                    // Highlight tree tile color
+                    tile.mesh.material.color.set('#4d7c0f');
+                    tile.mesh.userData.defaultColor = '#4d7c0f';
+                    
+                    treeCount++;
+                } else {
+                    // Path is broken, rollback tree placement
+                    activeObstacles.delete(candidate.key);
+                }
+            }
+
+            // 7. Place flowers on rest of grassy tiles
+            for (const candidate of candidateTiles) {
+                if (!activeObstacles.has(candidate.key) && Math.random() > 0.6) {
+                    const tile = hexGrid[candidate.key];
+                    addFlowers(tile.mesh.position.x, tile.mesh.position.y + tile.height/2, tile.mesh.position.z);
+                }
+            }
+        }
+
+        function refreshMap() {
+            if (activeStudyNpcId || isMoving) {
+                showNotification("Cannot refresh map while in study mode or moving!", "error");
+                return;
+            }
+
+            // Clean previous containers
+            while (hexTilesGroup.children.length > 0) {
+                hexTilesGroup.remove(hexTilesGroup.children[0]);
+            }
+            while (decorationsGroup.children.length > 0) {
+                decorationsGroup.remove(decorationsGroup.children[0]);
+            }
+
+            // Reset trackers
+            hexMeshes = [];
+            hexGrid = {};
+
+            // Rebuild
+            buildHexGrassland();
+
+            // Adjust farmhouse height based on fresh grid height
+            const farmhouseHeight = hexGrid["-1,-1"]?.height || 1.0;
+            if (houseGroup) {
+                houseGroup.position.y = farmhouseHeight;
+            }
+
+            // Snaps NPCs back to fresh heights
+            for (const key in npcs) {
+                const npc = npcs[key];
+                const tileY = hexGrid[`${npc.q},${npc.r}`]?.height || 1.0;
+                npc.defaultY = tileY;
+                npc.group.position.y = tileY;
+                npc.ring.position.y = tileY + 0.05;
+            }
+
+            // Relocate player avatar baseline height
+            const startPos = hexToPixel(playerHex.q, playerHex.r);
+            const tileHeight = hexGrid[`${playerHex.q},${playerHex.r}`]?.height || 1.0;
+            playerGroup.position.set(startPos.x, tileHeight, startPos.z);
+
+            showNotification("🗺️ Grassland map refreshed with verified unblocked paths!", "success");
+        }
+
+        function recenterCamera() {
+            if (!playerGroup || !controls) return;
+            const targetPos = playerGroup.position.clone();
+            
+            // Gently glide controls focus back to avatar position
+            const duration = 500;
+            const startTime = performance.now();
+            const startLookAt = controls.target.clone();
+            
+            function animateRecenter() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1.0);
+                
+                controls.target.lerpVectors(startLookAt, targetPos, progress);
+                controls.update();
+                
+                if (progress < 1.0) {
+                    requestAnimationFrame(animateRecenter);
+                } else {
+                    showNotification("🎥 Camera centered on avatar!", "success");
+                }
+            }
+            animateRecenter();
+        }
+
+        function addLowPolyTree(x, y, z) {
+            const treeGroup = new THREE.Group();
+            
+            const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.6, 5);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: '#78350f', roughness: 0.9 });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = 0.8;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            const foliageColors = ['#166534', '#15803d', '#14532d'];
+            for (let i = 0; i < 3; i++) {
+                const foliGeo = new THREE.ConeGeometry(1.5 - i*0.35, 1.6, 5);
+                const foliMat = new THREE.MeshStandardMaterial({ 
+                    color: foliageColors[i % foliageColors.length], 
+                    roughness: 0.85,
+                    flatShading: true
+                });
+                const foliage = new THREE.Mesh(foliGeo, foliMat);
+                foliage.position.y = 1.5 + (i * 0.85);
+                foliage.castShadow = true;
+                treeGroup.add(foliage);
+            }
+
+            treeGroup.position.set(x, y, z);
+            decorationsGroup.add(treeGroup);
+        }
+
+        function addLilyPad(x, y, z) {
+            const padGroup = new THREE.Group();
+            
+            // Lily pad leaf (flat circular green cylinder)
+            const padGeom = new THREE.CylinderGeometry(0.65, 0.65, 0.04, 6);
+            const padMat = new THREE.MeshStandardMaterial({ color: '#16a34a', roughness: 0.9, flatShading: true });
+            const pad = new THREE.Mesh(padGeom, padMat);
+            pad.castShadow = true;
+            padGroup.add(pad);
+            
+            // Add a small cute pink lotus bud on top
+            const budGeom = new THREE.ConeGeometry(0.18, 0.3, 5);
+            const budMat = new THREE.MeshStandardMaterial({ color: '#fda4af', roughness: 0.8, flatShading: true });
+            const bud = new THREE.Mesh(budGeom, budMat);
+            bud.position.y = 0.15;
+            bud.castShadow = true;
+            padGroup.add(bud);
+
+            // Off-center placement inside the water tile boundaries
+            const ox = (Math.random() - 0.5) * 1.2;
+            const oz = (Math.random() - 0.5) * 1.2;
+            padGroup.position.set(x + ox, y + 0.05, z + oz);
+            decorationsGroup.add(padGroup);
+        }
+
+        function addFlowers(x, y, z) {
+            const flowerColors = ['#f43f5e', '#fbbf24', '#c084fc', '#60a5fa'];
+            const flowerGroup = new THREE.Group();
+
+            for (let i = 0; i < 4; i++) {
+                const fx = (Math.random() - 0.5) * 1.5;
+                const fz = (Math.random() - 0.5) * 1.5;
+                
+                const stemG = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4);
+                const stemM = new THREE.MeshStandardMaterial({ color: '#3f6212' });
+                const stem = new THREE.Mesh(stemG, stemM);
+                stem.position.set(fx, 0.25, fz);
+                flowerGroup.add(stem);
+
+                const blossomG = new THREE.SphereGeometry(0.2, 5, 5);
+                const blossomM = new THREE.MeshStandardMaterial({ color: flowerColors[Math.floor(Math.random() * flowerColors.length)], roughness: 0.9 });
+                const blossom = new THREE.Mesh(blossomG, blossomM);
+                blossom.position.set(fx, 0.5, fz);
+                flowerGroup.add(blossom);
+            }
+
+            flowerGroup.position.set(x, y, z);
+            decorationsGroup.add(flowerGroup);
+        }
+
+        function buildFarmhouse(axialCoords) {
+            const pos = hexToPixel(axialCoords.q, axialCoords.r);
+            const groundHeight = hexGrid[`${axialCoords.q},${axialCoords.r}`]?.height || 1.0;
+            houseGroup = new THREE.Group();
+
+            const baseGeo = new THREE.BoxGeometry(4.2, 3.2, 4.2);
+            const baseMat = new THREE.MeshStandardMaterial({ color: '#b91c1c', roughness: 0.75, flatShading: true });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 1.6;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            houseGroup.add(base);
+
+            const roofGeo = new THREE.ConeGeometry(3.5, 2.2, 4);
+            const roofMat = new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.8 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 3.2 + 1.1;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            houseGroup.add(roof);
+
+            const doorGeo = new THREE.BoxGeometry(1.2, 2.0, 0.1);
+            const doorMat = new THREE.MeshStandardMaterial({ color: '#f8fafc', roughness: 0.9 });
+            const door = new THREE.Mesh(doorGeo, doorMat);
+            door.position.set(0, 1.0, 2.1);
+            door.castShadow = true;
+            houseGroup.add(door);
+
+            houseGroup.position.set(pos.x, groundHeight, pos.z);
+            scene.add(houseGroup);
+        }
+
+        // Helper: Create color materials with caching
+        const matCache = {};
+        function getCozyMaterial(hexColor, isRough = true) {
+            if (matCache[hexColor]) return matCache[hexColor];
+            const mat = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(hexColor),
+                roughness: isRough ? 0.85 : 0.4,
+                metalness: 0.05,
+                flatShading: true
+            });
+            matCache[hexColor] = mat;
+            return mat;
+        }
+
+        function createNPCs() {
+            // 1. RABBIT (Hex q:1, r:-2)
+            const rabbitGroup = new THREE.Group();
+            
+            const rBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 1.3), getCozyMaterial('#ffffff'));
+            rBody.position.y = 0.4;
+            rBody.castShadow = true;
+            rabbitGroup.add(rBody);
+
+            const rHead = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), getCozyMaterial('#ffffff'));
+            rHead.position.set(0, 0.9, 0.4);
+            rHead.castShadow = true;
+            rabbitGroup.add(rHead);
+
+            const earMat = getCozyMaterial('#ffe4e6');
+            const rEarL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.3), earMat);
+            rEarL.position.set(-0.2, 1.6, 0.3);
+            rEarL.castShadow = true;
+            rabbitGroup.add(rEarL);
+
+            const rEarR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.9, 0.3), earMat);
+            rEarR.position.set(0.2, 1.6, 0.3);
+            rEarR.castShadow = true;
+            rabbitGroup.add(rEarR);
+
+            const rTail = new THREE.Mesh(new THREE.SphereGeometry(0.2, 5, 5), getCozyMaterial('#ffffff'));
+            rTail.position.set(0, 0.4, -0.75);
+            rabbitGroup.add(rTail);
+
+            positionNpcOnGrid('rabbit', 1, -2, rabbitGroup, "🐇 Rabbit Pen");
+
+            // 2. COW (Hex q:-2, r:1)
+            const cowGroup = new THREE.Group();
+
+            const cBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.5, 2.4), getCozyMaterial('#ffffff'));
+            cBody.position.y = 1.15;
+            cBody.castShadow = true;
+            cowGroup.add(cBody);
+
+            const spotMat = getCozyMaterial('#1e293b');
+            const spot1 = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.6, 0.6), spotMat);
+            spot1.position.set(0, 1.2, 0.4);
+            cowGroup.add(spot1);
+
+            const spot2 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 1.64), spotMat);
+            spot2.position.set(-0.55, 1.3, -0.2);
+            cowGroup.add(spot2);
+
+            const cHead = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.1, 1.1), getCozyMaterial('#ffffff'));
+            cHead.position.set(0, 1.8, 1.2);
+            cHead.castShadow = true;
+            cowGroup.add(cHead);
+
+            const cSnout = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.5), getCozyMaterial('#fda4af'));
+            cSnout.position.set(0, 1.5, 1.8);
+            cowGroup.add(cSnout);
+
+            const hornMat = getCozyMaterial('#e2e8f0', false);
+            const hornL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.18), hornMat);
+            hornL.position.set(-0.4, 2.4, 1.1);
+            cowGroup.add(hornL);
+
+            const hornR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.18), hornMat);
+            hornR.position.set(0.4, 2.4, 1.1);
+            cowGroup.add(hornR);
+
+            const legMat = getCozyMaterial('#ffffff');
+            for (let i = 0; i < 4; i++) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), legMat);
+                const lx = (i % 2 === 0 ? 0.55 : -0.55);
+                const lz = (i < 2 ? 0.8 : -0.8);
+                leg.position.set(lx, 0.4, lz);
+                leg.castShadow = true;
+                cowGroup.add(leg);
+            }
+
+            positionNpcOnGrid('cow', -2, 1, cowGroup, "🐄 Cow Barn");
+
+            // 3. HORSE (Hex q:2, r:1)
+            const horseGroup = new THREE.Group();
+
+            const hBody = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.5, 2.6), getCozyMaterial('#78350f'));
+            hBody.position.y = 1.45;
+            hBody.castShadow = true;
+            horseGroup.add(hBody);
+
+            const hNeck = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.6, 0.9), getCozyMaterial('#78350f'));
+            hNeck.position.set(0, 2.4, 1.2);
+            hNeck.rotation.x = -Math.PI / 6;
+            hNeck.castShadow = true;
+            horseGroup.add(hNeck);
+
+            const hHead = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 1.3), getCozyMaterial('#78350f'));
+            hHead.position.set(0, 3.1, 1.5);
+            hHead.castShadow = true;
+            horseGroup.add(hHead);
+
+            const maneMat = getCozyMaterial('#1c1917');
+            const hMane = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.5, 0.4), maneMat);
+            hMane.position.set(0, 2.6, 0.7);
+            horseGroup.add(hMane);
+
+            const hEarL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.2), getCozyMaterial('#78350f'));
+            hEarL.position.set(-0.3, 3.6, 1.0);
+            horseGroup.add(hEarL);
+
+            const hEarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.2), getCozyMaterial('#78350f'));
+            hEarR.position.set(0.3, 3.6, 1.0);
+            horseGroup.add(hEarR);
+
+            const hLegMat = getCozyMaterial('#78350f');
+            for (let i = 0; i < 4; i++) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 0.35), hLegMat);
+                const lx = (i % 2 === 0 ? 0.45 : -0.45);
+                const lz = (i < 2 ? 0.9 : -0.9);
+                leg.position.set(lx, 0.55, lz);
+                leg.castShadow = true;
+                horseGroup.add(leg);
+            }
+
+            positionNpcOnGrid('horse', 2, 1, horseGroup, "🐎 Horse Corral");
+        }
+
+        function positionNpcOnGrid(id, q, r, group, label) {
+            const pos = hexToPixel(q, r);
+            const gridItem = hexGrid[`${q},${r}`];
+            const tileY = gridItem ? gridItem.height : 1.0;
+            
+            group.position.set(pos.x, tileY, pos.z);
+            scene.add(group);
+
+            const ringGeo = new THREE.RingGeometry(2.2, 2.5, 6);
+            ringGeo.rotateX(-Math.PI / 2);
+            ringGeo.rotateY(Math.PI / 6);
+            const ringMat = new THREE.MeshBasicMaterial({ color: '#eab308', side: THREE.DoubleSide, opacity: 0.8, transparent: true });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.set(pos.x, tileY + 0.05, pos.z);
+            scene.add(ring);
+
+            npcs[id] = {
+                id,
+                q,
+                r,
+                group,
+                ring,
+                label,
+                defaultY: tileY,
+                bobPhase: Math.random() * Math.PI
+            };
+        }
+
+        function createDefaultPlayer() {
+            playerGroup = new THREE.Group();
+
+            const bodyGeo = new THREE.BoxGeometry(0.9, 1.1, 0.6);
+            const bodyMat = getCozyMaterial('#2563eb');
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.95;
+            body.castShadow = true;
+            playerGroup.add(body);
+
+            const headGeo = new THREE.BoxGeometry(0.75, 0.75, 0.75);
+            const headMat = getCozyMaterial('#fde047');
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.9;
+            head.castShadow = true;
+            playerGroup.add(head);
+
+            const armGeo = new THREE.BoxGeometry(0.3, 0.9, 0.3);
+            const armMat = getCozyMaterial('#2563eb');
+            const armL = new THREE.Mesh(armGeo, armMat);
+            armL.position.set(-0.65, 0.95, 0);
+            armL.castShadow = true;
+            playerGroup.add(armL);
+
+            const armR = new THREE.Mesh(armGeo, armMat);
+            armR.position.set(0.65, 0.95, 0);
+            armR.castShadow = true;
+            playerGroup.add(armR);
+
+            const legGeo = new THREE.BoxGeometry(0.35, 0.7, 0.35);
+            const legMat = getCozyMaterial('#1e293b');
+            const legL = new THREE.Mesh(legGeo, legMat);
+            legL.position.set(-0.25, 0.35, 0);
+            legL.castShadow = true;
+            playerGroup.add(legL);
+
+            const legR = new THREE.Mesh(legGeo, legMat);
+            legR.position.set(0.25, 0.35, 0);
+            legR.castShadow = true;
+            playerGroup.add(legR);
+
+            playerModel = playerGroup.children[0];
+
+            const startPos = hexToPixel(playerHex.q, playerHex.r);
+            const tileHeight = hexGrid[`${playerHex.q},${playerHex.r}`]?.height || 1.0;
+            playerGroup.position.set(startPos.x, tileHeight, startPos.z);
+            scene.add(playerGroup);
+        }
+
+        function resetToDefaultPlayer() {
+            if (playerGroup) {
+                scene.remove(playerGroup);
+            }
+            createDefaultPlayer();
+            document.getElementById('reset-avatar-btn').classList.add('hidden');
+            document.getElementById('avatar-icon-preview').textContent = "👤";
+            document.getElementById('avatar-model-name').textContent = "Default Farmer";
+            showNotification("Avatar restored to default farmer model!", "success");
+        }
+
+        function createStudyEffectAssets() {
+            const carrotGroup = new THREE.Group();
+            const root = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.8, 5), getCozyMaterial('#ea580c'));
+            root.rotation.x = Math.PI / 2;
+            carrotGroup.add(root);
+
+            const leafy = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.4), getCozyMaterial('#16a34a'));
+            leafy.position.z = -0.55;
+            carrotGroup.add(leafy);
+
+            carrotMesh = carrotGroup;
+            carrotMesh.visible = false;
+            scene.add(carrotMesh);
+
+            const bGroup = new THREE.Group();
+            const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.35, 0.8, 8), getCozyMaterial('#64748b'));
+            cyl.position.y = 0.4;
+            cyl.castShadow = true;
+            bGroup.add(cyl);
+
+            bucketMesh = bGroup;
+            bucketMesh.visible = false;
+            scene.add(bucketMesh);
+
+            const dropGeo = new THREE.SphereGeometry(0.08, 4, 4);
+            const dropMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+            for (let i = 0; i < 5; i++) {
+                const drop = new THREE.Mesh(dropGeo, dropMat);
+                drop.visible = false;
+                scene.add(drop);
+                dynamicMilkDrops.push(drop);
+            }
+
+            const pCount = 20;
+            const pGeom = new THREE.BufferGeometry();
+            const pPositions = new Float32Array(pCount * 3);
+            for (let i = 0; i < pCount * 3; i += 3) {
+                pPositions[i] = (Math.random() - 0.5) * 6;
+                pPositions[i+1] = Math.random() * 4;
+                pPositions[i+2] = (Math.random() - 0.5) * 6;
+            }
+            pGeom.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+            
+            const pMat = new THREE.PointsMaterial({
+                color: '#fef08a',
+                size: 0.45,
+                transparent: true,
+                opacity: 0.85
+            });
+            particleSystem = new THREE.Points(pGeom, pMat);
+            particleSystem.visible = false;
+            scene.add(particleSystem);
+        }
+
+        // Raycasting for Hex grid hops & interactive clicks
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function onCanvasHover(event) {
+            if (activeStudyNpcId || isMoving) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(hexMeshes);
+
+            // Clean previous highlight from all meshes to strictly prevent stuck highlighted states
+            hexMeshes.forEach(mesh => {
+                if (mesh.material && mesh.material.color) {
+                    mesh.material.color.set(mesh.userData.defaultColor);
+                }
+            });
+
+            if (intersects.length > 0) {
+                const hovered = intersects[0].object;
+                
+                if (hovered.userData.isHexTile) {
+                    const isAdjacent = checkHexNeighbors(playerHex.q, playerHex.r, hovered.userData.q, hovered.userData.r);
+                    const isOccupied = playerHex.q === hovered.userData.q && playerHex.r === hovered.userData.r;
+                    
+                    if (hovered.userData.isObstacle) {
+                        // Color red if it's solid woods/lake water (Non-moveable obstacle!)
+                        hovered.material.color.set('#ef4444');
+                    } else if (isAdjacent && !isOccupied) {
+                        hovered.material.color.set('#bae6fd');
+                    }
+                }
+            }
+        }
+
+        function onCanvasClick(event) {
+            if (activeStudyNpcId || isMoving) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(hexMeshes);
+
+            if (intersects.length > 0) {
+                const clicked = intersects[0].object;
+                if (clicked.userData.isHexTile) {
+                    const isAdj = checkHexNeighbors(playerHex.q, playerHex.r, clicked.userData.q, clicked.userData.r);
+                    if (isAdj) {
+                        if (clicked.userData.isObstacle) {
+                            if (clicked.userData.isLake) {
+                                showNotification("You cannot swim! Avoid the cozy lake.", "error");
+                            } else {
+                                showNotification("The woods are too dense! You cannot move onto tree tiles.", "error");
+                            }
+                        } else {
+                            executeHopToHex(clicked.userData.q, clicked.userData.r);
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkHexNeighbors(q1, r1, q2, r2) {
+            const dq = q1 - q2;
+            const dr = r1 - r2;
+            return (Math.abs(dq) <= 1 && Math.abs(dr) <= 1 && Math.abs(dq + dr) <= 1) && !(dq === 0 && dr === 0);
+        }
+
+        // Detects if a parsed animation clip is a static base layer bind-pose
+        function isStaticBaseLayer(clip) {
+            if (!clip) return true;
+            const name = (clip.name || "").toLowerCase();
+            // Match standard names given by FBX exporters for structural rest binds
+            if (
+                name.includes("base layer") || 
+                name.includes("basestack") || 
+                name.includes("bindpose") || 
+                name.includes("default") ||
+                name.includes("reference") ||
+                name.includes("pose")
+            ) {
+                return true;
+            }
+            // If it has virtually zero duration or empty/minimal tracks, it is static
+            if (clip.duration <= 0.05 || !clip.tracks || clip.tracks.length === 0) {
+                return true;
+            }
+            return false;
+        }
+
+        function executeHopToHex(targetQ, targetR) {
+            if (isMoving) return;
+            isMoving = true;
+
+            const startPos = { x: playerGroup.position.x, z: playerGroup.position.z };
+            const startY = hexGrid[`${playerHex.q},${playerHex.r}`]?.height || 1.0;
+
+            const endPos = hexToPixel(targetQ, targetR);
+            const endY = hexGrid[`${targetQ},${targetR}`]?.height || 1.0;
+
+            playerGroup.lookAt(new THREE.Vector3(endPos.x, startY, endPos.z));
+
+            // 10% chance of playing an uploaded custom animation during movement
+            const animationKeys = Object.keys(animationsMap);
+            if (animationKeys.length > 0 && Math.random() < 0.10) {
+                const randomAnimKey = animationKeys[Math.floor(Math.random() * animationKeys.length)];
+                playCustomAnimation(randomAnimKey);
+                
+                // Stop after the animation duration finishes once
+                const clip = animationsMap[randomAnimKey];
+                const durationMs = clip ? clip.duration * 1000 : 3000;
+                setTimeout(() => {
+                    stopCustomAnimation();
+                }, durationMs);
+            }
+
+            const duration = 400;
+            const startTime = performance.now();
+
+            function animateHop() {
+                const elapsed = performance.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1.0);
+
+                const currentX = startPos.x + (endPos.x - startPos.x) * progress;
+                const currentZ = startPos.z + (endPos.z - startPos.z) * progress;
+
+                const jumpHeight = 1.8;
+                const currentY = startY + (endY - startY) * progress + Math.sin(progress * Math.PI) * jumpHeight;
+
+                playerGroup.position.set(currentX, currentY, currentZ);
+
+                if (playerGroup.children.length >= 6 && playerGroup.children[4] && playerGroup.children[4].rotation) {
+                    playerGroup.children[4].rotation.x = Math.sin(progress * Math.PI * 4) * 0.4;
+                    playerGroup.children[5].rotation.x = -Math.sin(progress * Math.PI * 4) * 0.4;
+                }
+
+                if (progress < 1.0) {
+                    requestAnimationFrame(animateHop);
+                } else {
+                    playerGroup.position.set(endPos.x, endY, endPos.z);
+                    playerHex = { q: targetQ, r: targetR };
+                    isMoving = false;
+
+                    if (playerGroup.children.length >= 6 && playerGroup.children[4] && playerGroup.children[4].rotation) {
+                        playerGroup.children[4].rotation.x = 0;
+                        playerGroup.children[5].rotation.x = 0;
+                    }
+
+                    // CHECK FARMHOUSE COORDS (q:-1, r:-1) -> Focus Side Menu, Dim Game Area
+                    const sidebar = document.getElementById('sidebar');
+                    const canvasContainer = document.getElementById('canvas-container');
+                    const farmhouseFocusBanner = document.getElementById('farmhouse-focus-banner');
+                    const collapsedBtn = document.getElementById('collapsed-sidebar-btn');
+
+                    if (targetQ === -1 && targetR === -1) {
+                        // Enter Farmhouse Focus Mode
+                        canvasContainer.classList.add('brightness-[0.4]');
+                        document.getElementById('three-canvas').classList.add('pointer-events-none');
+                        document.getElementById('farmhouse-dismiss-overlay').classList.remove('hidden');
+                        sidebar.classList.add('border-orange-500', 'ring-4', 'ring-orange-400', 'scale-[1.01]', 'bg-amber-50/10');
+                        farmhouseFocusBanner.classList.remove('hidden');
+
+                        // Force Sidebar to pop up automatically if it's currently hidden!
+                        if (sidebar.classList.contains('-translate-x-full')) {
+                            sidebar.classList.remove('-translate-x-full', 'absolute');
+                            sidebar.classList.add('relative');
+                            collapsedBtn.classList.add('hidden');
+                            setTimeout(onWindowResize, 310);
+                        }
+
+                        showNotification("🏡 Entered Farmhouse! Review milestones. Step outside when ready.", "success");
+                    } else {
+                        // Exit / Not at farmhouse
+                        canvasContainer.classList.remove('brightness-[0.4]');
+                        document.getElementById('three-canvas').classList.remove('pointer-events-none');
+                        document.getElementById('farmhouse-dismiss-overlay').classList.add('hidden');
+                        sidebar.classList.remove('border-orange-500', 'ring-4', 'ring-orange-400', 'scale-[1.01]', 'bg-amber-50/10');
+                        farmhouseFocusBanner.classList.add('hidden');
+                    }
+
+                    evaluateNearbyInteractions();
+                }
+            }
+
+            animateHop();
+        }
+
+        function movePlayerByDelta(dq, dr) {
+            const targetQ = playerHex.q + dq;
+            const targetR = playerHex.r + dr;
+            
+            const cell = hexGrid[`${targetQ},${targetR}`];
+            if (cell) {
+                if (cell.isObstacle) {
+                    if (cell.isLake) {
+                        showNotification("You cannot swim! Avoid the cozy lake.", "error");
+                    } else {
+                        showNotification("The woods are too dense! You cannot move onto tree tiles.", "error");
+                    }
+                } else {
+                    executeHopToHex(targetQ, targetR);
+                }
+            } else {
+                showNotification("A hedge blocks your way! Choose another tile.", "info");
+            }
+        }
+
+        function evaluateNearbyInteractions() {
+            let foundNpc = null;
+            for (const key in npcs) {
+                const npc = npcs[key];
+                // Check if player is standing on the exact same tile as the NPC
+                const isDirectlyOnNpc = playerHex.q === npc.q && playerHex.r === npc.r;
+                if (isDirectlyOnNpc) {
+                    foundNpc = npc;
+                    break;
+                }
+            }
+
+            if (foundNpc) {
+                showNPCInteractionPrompt(foundNpc);
+            }
+        }
+
+        function showNPCInteractionPrompt(npc) {
+            document.getElementById('npc-id-input').value = npc.id;
+            document.getElementById('npc-modal-title').textContent = `${npc.label}`;
+            
+            const modalHeader = document.getElementById('npc-modal-header');
+            const interactionEmoji = document.getElementById('interaction-emoji');
+            const interactionName = document.getElementById('interaction-name');
+            const interactionDesc = document.getElementById('interaction-desc');
+            const modalEmoji = document.getElementById('npc-modal-emoji');
+
+            if (npc.id === 'rabbit') {
+                modalEmoji.textContent = "🐇";
+                modalHeader.className = "p-6 text-white bg-gradient-to-r from-teal-500 to-emerald-500 relative";
+                interactionEmoji.textContent = "🥕";
+                interactionName.textContent = "Feeding the Rabbit";
+                interactionDesc.textContent = "Offer sweet carrots to the fluffy rabbit. Your avatar will continuously wave carrots while your study timer grows.";
+            } else if (npc.id === 'cow') {
+                modalEmoji.textContent = "🐄";
+                modalHeader.className = "p-6 text-white bg-gradient-to-r from-blue-500 to-indigo-500 relative";
+                interactionEmoji.textContent = "🥛";
+                interactionName.textContent = "Milking the Cow";
+                interactionDesc.textContent = "Sit near the cow to milk. A wooden bucket will spawn, accumulating milk bubbles proportional to your focused AFK studying hours.";
+            } else {
+                modalEmoji.textContent = "🐎";
+                modalHeader.className = "p-6 text-white bg-gradient-to-r from-amber-500 to-amber-700 relative";
+                interactionEmoji.textContent = "🌾";
+                interactionName.textContent = "Walking the Horse";
+                interactionDesc.textContent = "Lead the majestic brown horse gently around the corral in sync. Fosters excellent long-duration focus sessions.";
+            }
+
+            document.getElementById('npc-modal').classList.remove('hidden');
+        }
+
+        function closeNPCModal() {
+            document.getElementById('npc-modal').classList.add('hidden');
+        }
+
+
+        // --- HEURISTIC COMPANION AI PERSONAS ---
+        const COMPANION_PERSONAS = {
+            rabbit: {
+                name: "Barnaby the Bunny",
+                emoji: "🐇",
+                role: "Speed & Agile Learning Coach",
+                dialogues: [
+                    "Hop to it! Breaking big tasks into smaller carrot-sized bites makes learning easy!",
+                    "You're jumping through these concepts so fast! Keep that alert mind active.",
+                    "Quick focus intervals are my specialty. Let's nibble away at this study block!",
+                    "Concentration is like a leap—it takes spring and energy. Let's keep jumping!",
+                    "Fantastic progress! A quick alert break every now and then keeps our ears sharp!"
+                ]
+            },
+            cow: {
+                name: "Clarabelle the Cow",
+                emoji: "🐄",
+                role: "Steady & Diligent Mind Mentor",
+                dialogues: [
+                    "Moo-ve steadily! True understanding is like chewing cud—it takes slow, thoughtful contemplation.",
+                    "Don't rush the process. A calm, relaxed environment produces the richest knowledge.",
+                    "Your patience and persistence are absolutely udderly amazing! Keep chewing on this concept.",
+                    "Deep breathing helps. Let's maintain this peaceful pasture of concentration.",
+                    "Wisdom isn't rushed. Like fresh morning milk, great ideas take time to settle."
+                ]
+            },
+            horse: {
+                name: "Gallop the Horse",
+                emoji: "🐎",
+                role: "Endurance & Drive Trainer",
+                dialogues: [
+                    "Keep up the stride! Learning is a long-distance run, not a short sprint.",
+                    "Hold your head high. You have the stamina and power to clear any obstacle ahead!",
+                    "Steady trotting builds immense endurance. We are gaining spectacular mileage today!",
+                    "Feel the rhythm of your work. Every steady stroke of focus brings us closer to the finish line.",
+                    "Outstanding stamina! Let's power through this academic stretch together!"
+                ]
+            },
+            general: {
+                name: "Buster the energetic Pup",
+                emoji: "🐶",
+                role: "Academic Coach",
+                dialogues: [
+                    "WOOF! You're doing absolutely stellar! Keep that study flame burning!",
+                    "A quick stretch does wonders. Keep pacing yourself, we have grass to till!",
+                    "Superb dedication! Let's get these tasks completed. Every step is major progress!",
+                    "You are working so hard today. I'm sitting right here keeping you safe and focused!",
+                    "Consistency is the secret sauce. Let's finish this study interval strong!"
+                ]
+            }
+        };
+
+        let currentPersona = COMPANION_PERSONAS.general;
+        let sessionChatHistory = [];
+
+        function triggerHeuristicPersona(npcId) {
+            // Companion correlates directly to the animal NPC
+            currentPersona = COMPANION_PERSONAS[npcId] || COMPANION_PERSONAS.general;
+
+            // Render details
+            document.getElementById('companion-avatar').textContent = currentPersona.emoji;
+            document.getElementById('companion-name').textContent = currentPersona.name;
+            document.getElementById('companion-role').textContent = currentPersona.role;
+            
+            // Initialize conversational chat history
+            initSessionChat();
+        }
+
+        function initSessionChat() {
+            const welcomeText = `Hello! I am ${currentPersona.name}, your ${currentPersona.role}. Today we are focusing on "${activeSubjectName}". Feel free to ask me anything to help you learn, or ask me to quiz you on this topic!`;
+            sessionChatHistory = [
+                { role: "model", parts: [{ text: welcomeText }] }
+            ];
+            document.getElementById('companion-status').textContent = "Listening";
+            renderSessionChat();
+        }
+
+        function renderSessionChat() {
+            const logContainer = document.getElementById('companion-chat-log');
+            logContainer.innerHTML = '';
+
+            sessionChatHistory.forEach(msg => {
+                const bubble = document.createElement('div');
+                bubble.className = "p-2.5 rounded-xl text-xs max-w-[85%] leading-relaxed break-words " + 
+                    (msg.role === 'user' 
+                        ? "bg-emerald-600/30 border border-emerald-500/30 text-emerald-100 self-end ml-auto animate-in slide-in-from-right-2 duration-150" 
+                        : "bg-white/5 border border-white/5 text-slate-200 self-start mr-auto animate-in slide-in-from-left-2 duration-150");
+                
+                const namePrefix = msg.role === 'user' ? '<strong>You:</strong> ' : `<strong>${currentPersona.name}:</strong> `;
+                bubble.innerHTML = namePrefix + formatChatText(msg.parts[0].text);
+                logContainer.appendChild(bubble);
+            });
+
+            // Auto-scroll to bottom of chat log
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Quick formatter for markdown-style syntax responses from model
+        function formatChatText(text) {
+            return text
+                .replace(/\*\/(.*?)\*\//g, '<em>$1</em>')
+                .replace(/\*\*(.*?)\*\//g, '<strong>$1</strong>')
+                .replace(/`/g, '&#x60;'); // Prevent markdown backtick injection
+        }
+
+        async function sendSessionChatMessage(event) {
+            event.preventDefault();
+            const inputField = document.getElementById('chat-input-field');
+            const userMsgText = inputField.value.trim();
+            if (!userMsgText) return;
+
+            // Append user message
+            sessionChatHistory.push({ role: "user", parts: [{ text: userMsgText }] });
+            inputField.value = '';
+            renderSessionChat();
+
+            // Trigger preview avatar to react to chat interaction
+            triggerPreviewAvatarReaction();
+
+            // Show thinking status
+            const statusEl = document.getElementById('companion-status');
+            statusEl.textContent = "Thinking...";
+            statusEl.className = "text-amber-400 font-bold animate-pulse";
+
+            // Build system prompt context
+            const systemPrompt = `You are ${currentPersona.name}, acting as a ${currentPersona.role} who is helpful, cozy, and friendly. The user is currently in a deep work/AFK session studying "${activeSubjectName}". Your primary goal is to help them learn about this topic, explain concepts, offer encouraging study facts, or ask them helpful study quiz questions. Keep responses under 3-4 sentences to maintain focus.`;
+            
+            const payload = {
+                contents: sessionChatHistory,
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const data = await callGeminiWithRetry(payload);
+                const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm having a little trouble thinking right now, but keep up the great work!";
+                sessionChatHistory.push({ role: "model", parts: [{ text: responseText }] });
+            } catch (error) {
+                console.error("Gemini API Error: ", error);
+                sessionChatHistory.push({ role: "model", parts: [{ text: "Connection was lost briefly, but I am still here cheering you on! Let's stay focused." }] });
+            } finally {
+                statusEl.textContent = "Listening";
+                statusEl.className = "text-emerald-400 font-bold";
+                renderSessionChat();
+            }
+        }
+
+        async function callGeminiWithRetry(payload, retries = 3, delay = 1000) {
+            const apiKey = ""; // Left empty for Canvas auto-injection in production
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                    if (response.status === 429) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+
+        // --- PROCEDURAL 2D LOOPING GIF ANIMATOR ---
+        let gifCanvas, gifCtx;
+        let gifAnimationId = null;
+        let gifFrameCount = 0;
+
+        function initGifCanvas() {
+            gifCanvas = document.getElementById('gif-canvas');
+            gifCtx = gifCanvas.getContext('2d');
+        }
+
+        function startProceduralGif(npcId) {
+            if (gifAnimationId) cancelAnimationFrame(gifAnimationId);
+            gifFrameCount = 0;
+
+            function drawLoop() {
+                gifFrameCount++;
+                gifCtx.clearRect(0, 0, 140, 140);
+
+                const bounce = Math.sin(gifFrameCount * 0.1) * 8;
+                const chew = Math.abs(Math.sin(gifFrameCount * 0.2)) * 4;
+
+                if (npcId === 'rabbit') {
+                    gifCtx.fillStyle = '#22c55e';
+                    gifCtx.fillRect(0, 110, 140, 30);
+
+                    gifCtx.fillStyle = '#f8fafc';
+                    gifCtx.fillRect(35, 60 + bounce, 65, 45);
+                    gifCtx.fillRect(75, 40 + bounce, 30, 30);
+
+                    gifCtx.fillStyle = '#fecdd3';
+                    gifCtx.fillRect(95, 55 + bounce, 10, 8);
+
+                    gifCtx.fillStyle = '#f1f5f9';
+                    gifCtx.fillRect(23, 75 + bounce, 15, 15);
+
+                    gifCtx.fillStyle = '#f8fafc';
+                    gifCtx.fillRect(78, 15 + bounce + (bounce*0.2), 10, 28);
+                    gifCtx.fillRect(92, 15 + bounce + (bounce*0.1), 10, 28);
+                    
+                    gifCtx.fillStyle = '#fecdd3';
+                    gifCtx.fillRect(81, 20 + bounce + (bounce*0.2), 4, 20);
+                    gifCtx.fillRect(95, 20 + bounce + (bounce*0.1), 4, 20);
+
+                    gifCtx.fillStyle = '#ea580c';
+                    gifCtx.fillRect(92, 60 + bounce + chew, 25, 10);
+                    gifCtx.fillStyle = '#16a34a';
+                    gifCtx.fillRect(117, 57 + bounce + chew, 8, 16);
+
+                    gifCtx.fillStyle = '#fef08a';
+                    if (gifFrameCount % 30 < 15) {
+                        gifCtx.fillRect(15, 25, 4, 4);
+                        gifCtx.fillRect(120, 15, 4, 4);
+                    }
+
+                } else if (npcId === 'cow') {
+                    gifCtx.fillStyle = '#1e293b';
+                    gifCtx.fillRect(0, 0, 140, 140);
+                    gifCtx.fillStyle = '#15803d';
+                    gifCtx.fillRect(0, 115, 140, 25);
+
+                    gifCtx.fillStyle = '#ffffff';
+                    gifCtx.fillRect(20, 45 + bounce*0.3, 85, 60);
+                    gifCtx.fillRect(85, 25 + bounce*0.3, 35, 40);
+
+                    gifCtx.fillStyle = '#0f172a';
+                    gifCtx.fillRect(40, 50 + bounce*0.3, 25, 30);
+                    gifCtx.fillRect(75, 65 + bounce*0.3, 20, 25);
+                    gifCtx.fillRect(100, 30 + bounce*0.3, 15, 20);
+
+                    gifCtx.fillStyle = '#fda4af';
+                    gifCtx.fillRect(100, 45 + bounce*0.3 + chew, 25, 18);
+                    gifCtx.fillStyle = '#000000';
+                    gifCtx.fillRect(106, 52 + bounce*0.3 + chew, 3, 3);
+                    gifCtx.fillRect(116, 52 + bounce*0.3 + chew, 3, 3);
+
+                    gifCtx.fillStyle = '#fef08a';
+                    gifCtx.fillRect(85, 12 + bounce*0.3, 6, 14);
+                    gifCtx.fillRect(114, 12 + bounce*0.3, 6, 14);
+
+                    gifCtx.fillStyle = '#000000';
+                    if (gifFrameCount % 120 > 8) {
+                        gifCtx.fillRect(92, 33 + bounce*0.3, 5, 5);
+                    } else {
+                        gifCtx.fillRect(92, 35 + bounce*0.3, 5, 2);
+                    }
+
+                } else if (npcId === 'horse') {
+                    gifCtx.fillStyle = '#0f172a';
+                    gifCtx.fillRect(0, 0, 140, 140);
+                    gifCtx.fillStyle = '#78350f';
+                    gifCtx.fillRect(0, 115, 140, 25);
+
+                    gifCtx.fillStyle = '#b45309';
+                    gifCtx.fillRect(25, 50 + bounce, 75, 45);
+                    gifCtx.fillRect(80, 25 + bounce, 24, 40);
+                    gifCtx.fillRect(85, 15 + bounce, 35, 20);
+
+                    gifCtx.fillStyle = '#451a03';
+                    gifCtx.fillRect(72, 28 + bounce - chew, 10, 30);
+                    gifCtx.fillRect(77, 12 + bounce, 12, 10);
+
+                    gifCtx.fillStyle = '#92400e';
+                    const offset = Math.sin(gifFrameCount * 0.25) * 12;
+                    gifCtx.fillRect(35, 95 + bounce, 8, 20 + offset);
+                    gifCtx.fillRect(55, 95 + bounce, 8, 20 - offset);
+                    gifCtx.fillRect(75, 95 + bounce, 8, 20 + offset);
+                    gifCtx.fillRect(90, 95 + bounce, 8, 20 - offset);
+
+                    gifCtx.fillStyle = '#fef08a';
+                    gifCtx.fillRect(10 + (gifFrameCount%30), 40 + (gifFrameCount%20), 3, 3);
+                }
+
+                gifAnimationId = requestAnimationFrame(drawLoop);
+            }
+
+            drawLoop();
+        }
+
+        function stopProceduralGif() {
+            if (gifAnimationId) {
+                cancelAnimationFrame(gifAnimationId);
+                gifAnimationId = null;
+            }
+        }
+
+
+        // --- ACTIVE STUDY / AFK TIMER SYSTEM ---
+        let studyTimerInterval = null;
+        let studyElapsedSeconds = 0;
+        let studyTargetSeconds = 0;
+        let activeSubjectName = "";
+
+        function startStudySession(event) {
+            event.preventDefault();
+
+            const npcId = document.getElementById('npc-id-input').value;
+            
+            // Get value from Subject Selector or Custom field
+            const subjectSelector = document.getElementById('subject-selector');
+            if (subjectSelector.value === 'custom') {
+                activeSubjectName = document.getElementById('subject-input').value.trim() || "Custom Subject";
+            } else {
+                activeSubjectName = subjectSelector.options[subjectSelector.selectedIndex].text;
+            }
+
+            const targetMins = parseInt(document.getElementById('duration-input').value);
+            
+            studyElapsedSeconds = 0;
+            studyTargetSeconds = targetMins * 60;
+            activeStudyNpcId = npcId;
+
+            // Apply animal-correlated companion coach and load chat
+            triggerHeuristicPersona(npcId);
+
+            // Trigger custom retro procedural animated GIF
+            startProceduralGif(npcId);
+
+            document.getElementById('active-subject').textContent = `"${activeSubjectName}"`;
+            
+            const activeIcon = document.getElementById('active-avatar-icon');
+            const taskDesc = document.getElementById('active-task-desc');
+            if (npcId === 'rabbit') {
+                activeIcon.textContent = "🐇";
+                taskDesc.textContent = "Feeding the Rabbit";
+            } else if (npcId === 'cow') {
+                activeIcon.textContent = "🐄";
+                taskDesc.textContent = "Milking the Cow";
+            } else {
+                activeIcon.textContent = "🐎";
+                taskDesc.textContent = "Walking the Horse";
+            }
+
+            const pBar = document.getElementById('progress-bar-container');
+            const pFill = document.getElementById('progress-bar-fill');
+            if (studyTargetSeconds > 0) {
+                pBar.classList.remove('hidden');
+                pFill.style.width = '0%';
+            } else {
+                pBar.classList.add('hidden');
+            }
+
+            document.getElementById('study-notes').value = "";
+            document.getElementById('npc-modal').classList.add('hidden');
+            document.getElementById('active-study-overlay').classList.remove('hidden');
+
+            if (!soundscapeActive) {
+                toggleAmbientSound();
+            }
+
+            initiate3DChoreEffects(npcId);
+            
+            // Initialize mini avatar reaction viewport
+            initActiveAvatarPreview();
+
+            updateTimerDisplay();
+            studyTimerInterval = setInterval(() => {
+                studyElapsedSeconds++;
+                updateTimerDisplay();
+
+                // Periodically chip in with cozy learning prompts
+                if (studyElapsedSeconds % 45 === 0) {
+                    const quietReminders = [
+                        "Remember to take a quick sip of water! 💧",
+                        "How is the focus coming along? Let me know if you need any concepts simplified.",
+                        "Keep up the steady pace. Every minute spent learning compounds your knowledge. 🧠",
+                        "Need a quick micro-quiz on your subject? Just ask me to test you!"
+                    ];
+                    const randomReminder = quietReminders[Math.floor(Math.random() * quietReminders.length)];
+                    sessionChatHistory.push({ role: "model", parts: [{ text: `*(Gentle Reminder)*: ${randomReminder}` }] });
+                    renderSessionChat();
+                }
+
+                if (studyTargetSeconds > 0 && studyElapsedSeconds >= studyTargetSeconds) {
+                    finishStudySession();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const h = Math.floor(studyElapsedSeconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((studyElapsedSeconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (studyElapsedSeconds % 60).toString().padStart(2, '0');
+            
+            document.getElementById('active-timer-display').textContent = `${h}:${m}:${s}`;
+
+            if (studyTargetSeconds > 0) {
+                const percent = Math.min((studyElapsedSeconds / studyTargetSeconds) * 100, 100);
+                document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+            }
+        }
+
+        function finishStudySession() {
+            clearInterval(studyTimerInterval);
+            stopProceduralGif();
+            
+            const recordedMinutes = studyElapsedSeconds / 60;
+            const finalNotes = document.getElementById('study-notes').value.trim();
+
+            const newLog = {
+                id: crypto.randomUUID(),
+                subject: activeSubjectName,
+                duration: studyElapsedSeconds,
+                npc: activeStudyNpcId,
+                date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                notes: finalNotes
+            };
+
+            studyLogs.push(newLog);
+
+            achievements[activeStudyNpcId] = (achievements[activeStudyNpcId] || 0) + 1;
+            achievements.totalMinutes += recordedMinutes;
+
+            saveStateToLocalStorage();
+            updateSidebarUI();
+
+            // Clear secondary active preview graphics scene to free resources safely
+            if (previewRenderer) {
+                previewRenderer.dispose();
+                previewRenderer = null;
+            }
+            previewClone = null;
+            previewScene = null;
+            previewCamera = null;
+
+            // FIX: Positioning NPC and Avatar beautiful side-by-side on task completion!
+            const npc = npcs[activeStudyNpcId];
+            if (npc) {
+                stop3DChoreEffects();
+
+                // Snap home group back to its exact baseline pixel origin
+                const npcHome = hexToPixel(npc.q, npc.r);
+                npc.group.position.set(npcHome.x, npc.defaultY, npcHome.z);
+
+                // Position the avatar gracefully side-by-side with the NPC on the SAME hex cell
+                playerGroup.position.set(npcHome.x + 1.2, npc.defaultY, npcHome.z + 0.8);
+                
+                // Have both the NPC and Avatar face the front morning camera angle
+                playerGroup.rotation.set(0, 0, 0);
+                playerGroup.lookAt(new THREE.Vector3(npcHome.x + 1.2, npc.defaultY, npcHome.z + 20));
+
+                npc.group.rotation.set(0, 0, 0);
+                npc.group.lookAt(new THREE.Vector3(npcHome.x, npc.defaultY, npcHome.z + 20));
+
+                showNotification("🎉 Task complete! Stand side-by-side with your study buddy.", "success");
+            } else {
+                stop3DChoreEffects();
+            }
+
+            document.getElementById('active-study-overlay').classList.add('hidden');
+            activeStudyNpcId = null;
+        }
+
+
+        // --- CHORE GRAPHICS ANIMATION CONTROL LOOP ---
+        let originalPlayerRotY = 0;
+
+        function initiate3DChoreEffects(npcId) {
+            const npc = npcs[npcId];
+            if (!npc) return;
+
+            originalPlayerRotY = playerGroup.rotation.y;
+            playerGroup.lookAt(npc.group.position);
+
+            controls.target.copy(npc.group.position);
+
+            if (npcId === 'rabbit') {
+                carrotMesh.visible = true;
+                carrotMesh.position.set(
+                    (playerGroup.position.x + npc.group.position.x) / 2,
+                    npc.defaultY + 0.3,
+                    (playerGroup.position.z + npc.group.position.z) / 2
+                );
+                particleSystem.position.copy(npc.group.position);
+                particleSystem.visible = true;
+
+            } else if (npcId === 'cow') {
+                bucketMesh.visible = true;
+                bucketMesh.position.set(
+                    (playerGroup.position.x + npc.group.position.x) / 2,
+                    npc.defaultY,
+                    (playerGroup.position.z + npc.group.position.z) / 2
+                );
+                
+                dynamicMilkDrops.forEach((drop, idx) => {
+                    drop.visible = true;
+                    drop.position.set(
+                        npc.group.position.x + (Math.random() - 0.5) * 0.4,
+                        npc.defaultY + 1.1,
+                        npc.group.position.z + (Math.random() - 0.5) * 0.4
+                    );
+                });
+                particleSystem.position.copy(bucketMesh.position);
+                particleSystem.visible = true;
+
+            } else if (npcId === 'horse') {
+                particleSystem.position.copy(playerGroup.position);
+                particleSystem.visible = true;
+            }
+        }
+
+        function stop3DChoreEffects() {
+            carrotMesh.visible = false;
+            bucketMesh.visible = false;
+            particleSystem.visible = false;
+            dynamicMilkDrops.forEach(drop => drop.visible = false);
+
+            if (playerGroup) {
+                playerGroup.rotation.y = originalPlayerRotY;
+            }
+
+            controls.target.set(0, 0, 0);
+        }
+
+        // --- DYNAMIC CUSTOM ANIMATION RIGGING & RETRO RESCALING HELPERS ---
+        // Adaptive algorithm translating bone coordinate maps dynamically to uploaded model configurations
+        function applyCustomTextureToModel(model, texture) {
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.map = texture;
+                    child.material.roughness = 0.6;
+                    child.material.needsUpdate = true;
+                }
+            });
+        }
+
+        // PNG Texture file Selector Listener
+        const textureInput = document.getElementById('avatar-upload-texture');
+        textureInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const imageLoader = new THREE.TextureLoader();
+                imageLoader.load(evt.target.result, function(texture) {
+                    currentTextureMap = texture;
+                    if (playerModel) {
+                        applyCustomTextureToModel(playerModel, currentTextureMap);
+                        showNotification("PNG Texture overlay successfully mapped!", "success");
+                    } else {
+                        showNotification("Texture stored. Upload FBX model next to apply.", "info");
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // FBX Animation file Track Selector Listener
+        const animInput = document.getElementById('avatar-upload-anim');
+        animInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!playerModel) {
+                showNotification("Please upload an FBX Model first before adding animations!", "error");
+                return;
+            }
+
+            showNotification("Extracting Animation Tracks...", "info");
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const contents = evt.target.result;
+                    const loader = new THREE.FBXLoader();
+                    const animFBX = loader.parse(contents, '');
+                    
+                    if (animFBX.animations && animFBX.animations.length > 0) {
+                        animFBX.animations.forEach((clip) => {
+                            if (isStaticBaseLayer(clip)) return; // Strictly ignore static base layer structures!
+
+                            const originalName = clip.name && clip.name !== "Take 001" ? clip.name : `custom_${Object.keys(animationsMap).length + 1}`;
+                            const finalName = `${originalName} (${file.name.substring(0, 10)})`;
+                            
+                            // Smart adapt track bone names to target skeletal coordinates
+                            const adaptedClip = adaptClipToModel(clip, playerModel);
+                            animationsMap[finalName] = adaptedClip;
+                        });
+                        updateAnimationsSidebarList();
+                        showNotification(`Imported ${animFBX.animations.length} animation tracks!`, "success");
+                    } else {
+                        // Fallback: Check if we can parse using GLTFLoader if the animation file is a GLB fallback
+                        const gltfLoader = new THREE.GLTFLoader();
+                        gltfLoader.parse(contents, '', (gltf) => {
+                            if (gltf.animations && gltf.animations.length > 0) {
+                                gltf.animations.forEach((clip) => {
+                                    if (isStaticBaseLayer(clip)) return; // Strictly ignore static base layer structures!
+
+                                    const finalName = clip.name || `glb_anim_${Object.keys(animationsMap).length + 1}`;
+                                    const adaptedClip = adaptClipToModel(clip, playerModel);
+                                    animationsMap[finalName] = adaptedClip;
+                                });
+                                updateAnimationsSidebarList();
+                                showNotification(`Imported GLB animation tracks!`, "success");
+                            } else {
+                                showNotification("No animations found in this file.", "error");
+                            }
+                        }, () => {
+                            showNotification("No valid skeletal keyframes found in animation file.", "error");
+                        });
+                    }
+                } catch (err) {
+                    console.error("Animation parsing error:", err);
+                    showNotification("Animation track import failed.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Smart Naming Matcher Utility that bridges animation tracks with disparate skeletal layouts
+        function adaptClipToModel(clip, model) {
+            const modelBones = [];
+            model.traverse(node => {
+                if (node.isBone || node.name) {
+                    modelBones.push(node.name);
+                }
+            });
+
+            const clonedClip = clip.clone();
+
+            clonedClip.tracks.forEach(track => {
+                const parts = track.name.split('.');
+                if (parts.length < 2) return;
+                
+                let trackNodeName = parts[0];
+                const property = parts.slice(1).join('.');
+
+                const braceMatch = trackNodeName.match(/\[(.*?)\]/);
+                if (braceMatch) {
+                    trackNodeName = braceMatch[1];
+                }
+
+                const bestMatch = findBestBoneMatch(trackNodeName, modelBones);
+                if (bestMatch && bestMatch !== trackNodeName) {
+                    track.name = bestMatch + '.' + property;
+                }
+            });
+
+            return clonedClip;
+        }
+
+        function findBestBoneMatch(trackNodeName, modelBones) {
+            for (const bone of modelBones) {
+                if (bone === trackNodeName) return bone;
+            }
+
+            const cleanTrackName = trackNodeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            for (const bone of modelBones) {
+                const cleanBone = bone.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanTrackName.endsWith(cleanBone) || cleanBone.endsWith(cleanTrackName)) {
+                    return bone;
+                }
+            }
+
+            const mixamoMap = {
+                'hips': ['hips', 'pelvis', 'root'],
+                'spine': ['spine', 'chest', 'torso'],
+                'spine1': ['spine1', 'chest', 'upperchest'],
+                'spine2': ['spine2', 'upperchest', 'chest'],
+                'neck': ['neck'],
+                'head': ['head'],
+                'leftshoulder': ['leftshoulder', 'shoulderl', 'lshoulder', 'claviclel'],
+                'leftarm': ['leftarm', 'shoulderl', 'larm', 'arm_l', 'upperarm_l', 'leftuparm'],
+                'leftforearm': ['leftforearm', 'forearml', 'lforearm', 'forearm_l', 'leftarm', 'l_arm'],
+                'lefthand': ['lefthand', 'handl', 'lhand', 'hand_l', 'leftwrist', 'l_wrist'],
+                'rightshoulder': ['rightshoulder', 'shoulderr', 'rshoulder', 'clavicler'],
+                'rightarm': ['rightarm', 'shoulderr', 'rarm', 'arm_r', 'upperarm_r', 'rightuparm'],
+                'rightforearm': ['rightforearm', 'forearmr', 'rforearm', 'forearm_r', 'rightarm', 'r_arm'],
+                'righthand': ['righthand', 'handr', 'rhand', 'hand_r', 'rightwrist', 'r_wrist'],
+                'leftupleg': ['leftupleg', 'leftthigh', 'thighl', 'lthigh', 'thigh_l', 'leftleg', 'l_leg'],
+                'leftleg': ['leftleg', 'leftshin', 'calfl', 'lfoot', 'shin_l', 'leftcalf'],
+                'leftfoot': ['leftfoot', 'leftankle', 'footl', 'lfoot', 'foot_l', 'l_ankle'],
+                'rightupleg': ['rightupleg', 'rightthigh', 'thighr', 'rthigh', 'thigh_r', 'rightleg', 'r_leg'],
+                'rightleg': ['rightleg', 'rightshin', 'calfr', 'rfoot', 'shin_r', 'rightcalf'],
+                'rightfoot': ['rightfoot', 'rightankle', 'footr', 'rfoot', 'foot_r', 'r_ankle']
+            };
+
+            for (const mixKey in mixamoMap) {
+                if (cleanTrackName.includes(mixKey)) {
+                    const candidates = mixamoMap[mixKey];
+                    for (const cand of candidates) {
+                        for (const bone of modelBones) {
+                            const cb = bone.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (cb === cand || cb.includes(cand)) {
+                                return bone;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        // Unified 3D Model file Input Selector supporting GLB fallbacks elegantly
+        document.getElementById('avatar-upload-model').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const name = file.name.toLowerCase();
+            const extension = name.split('.').pop();
+            
+            showNotification("Processing custom 3D model...", "info");
+            
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const contents = evt.target.result;
+                
+                if (extension === 'glb' || extension === 'gltf') {
+                    loadGLBModel(contents, file.name);
+                } else if (extension === 'fbx') {
+                    loadFBXModel(contents, file.name);
+                } else {
+                    showNotification("Unsupported file format. Please upload FBX or GLB.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function loadGLBModel(contents, fileName) {
+            const manager = new THREE.LoadingManager();
+            manager.setURLModifier((url) => {
+                const isAbsolute = url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:');
+                if (!isAbsolute) {
+                    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                }
+                return url;
+            });
+
+            const loader = new THREE.GLTFLoader(manager);
+            loader.parse(contents, '', function(gltf) {
+                setupLoadedAvatar(gltf.scene, fileName, gltf.animations);
+            }, function(error) {
+                console.error("GLB parser failure: ", error);
+                showNotification("GLB parsing error. File may be corrupted.", "error");
+            });
+        }
+
+        function loadFBXModel(contents, fileName) {
+            try {
+                const loader = new THREE.FBXLoader();
+                const parsedModel = loader.parse(contents, '');
+                setupLoadedAvatar(parsedModel, fileName, parsedModel.animations);
+            } catch (error) {
+                console.error("FBX Parsing failed:", error);
+                showNotification("Skeletal parser failed. Ensure your FBX model is binary format.", "error");
+            }
+        }
+
+        function setupLoadedAvatar(loadedModel, fileName, animations) {
+            while (playerGroup.children.length > 0) {
+                playerGroup.remove(playerGroup.children[0]);
+            }
+
+            playerModel = loadedModel;
+
+            // Automatically bound box & scale custom model properly
+            const box = new THREE.Box3().setFromObject(playerModel);
+            const sizeVec = new THREE.Vector3();
+            box.getSize(sizeVec);
+            const maxDim = Math.max(sizeVec.x, sizeVec.y, sizeVec.z);
+            
+            const targetScale = 2.5 / (maxDim || 1);
+            playerModel.scale.set(targetScale, targetScale, targetScale);
+
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            playerModel.position.y = -box.min.y * targetScale;
+            playerModel.position.x = -center.x * targetScale;
+            playerModel.position.z = -center.z * targetScale;
+
+            playerModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    if (currentTextureMap) {
+                        child.material.map = currentTextureMap;
+                        child.material.roughness = 0.6;
+                        child.material.needsUpdate = true;
+                    }
+                }
+            });
+
+            mixer = new THREE.AnimationMixer(playerModel);
+            animationsMap = {};
+
+            if (animations && animations.length > 0) {
+                animations.forEach((clip, index) => {
+                    if (isStaticBaseLayer(clip)) return; // Strictly ignore static base layer structures!
+
+                    const name = clip.name || `track_${index + 1}`;
+                    const adaptedClip = adaptClipToModel(clip, playerModel);
+                    animationsMap[name] = adaptedClip;
+                });
+            }
+
+            updateAnimationsSidebarList();
+
+            playerGroup.add(playerModel);
+            
+            document.getElementById('avatar-icon-preview').textContent = "🤖";
+            document.getElementById('reset-avatar-btn').classList.remove('hidden');
+            document.getElementById('avatar-model-name').textContent = fileName;
+
+            showNotification("Custom 3D model mounted successfully!", "success");
+        }
+
+        function updateAnimationsSidebarList() {
+            const container = document.getElementById('anim-list-container');
+            container.innerHTML = "";
+            const keys = Object.keys(animationsMap);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<div class="text-[10px] text-slate-400 text-center py-1">No custom animation tracks loaded.</div>`;
+                return;
+            }
+
+            keys.forEach((name) => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between bg-slate-50 border border-slate-100 rounded p-1 mb-1";
+                item.innerHTML = `
+                    <span class="truncate font-semibold text-slate-700 select-none">${name}</span>
+                    <div class="flex gap-1">
+                        <button type="button" onclick="playCustomAnimation('${name}')" class="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[9px] shadow-sm">Play</button>
+                        <button type="button" onclick="stopCustomAnimation()" class="px-1.5 py-0.5 bg-slate-400 hover:bg-slate-500 text-white font-bold rounded text-[9px] shadow-sm">Stop</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function playCustomAnimation(name) {
+            if (!mixer || !playerModel) {
+                showNotification("Upload and mount a model first!", "error");
+                return;
+            }
+            const clip = animationsMap[name];
+            if (clip) {
+                mixer.stopAllAction();
+                const action = mixer.clipAction(clip);
+                action.play();
+                activeAction = action;
+                showNotification(`Playing: ${name}`, "info");
+            }
+        }
+
+        function stopCustomAnimation() {
+            if (mixer) {
+                mixer.stopAllAction();
+                activeAction = null;
+            }
+        }
+
+        function cloneModelHelper(source) {
+            const clone = source.clone();
+            const clonedBonesByName = {};
+            // Gather references to all newly cloned bone entities
+            clone.traverse(node => {
+                if (node.isBone) {
+                    clonedBonesByName[node.name] = node;
+                }
+            });
+            // Remap skinned mesh skeleton bindings to the local cloned bone tree
+            clone.traverse(node => {
+                if (node.isSkinnedMesh) {
+                    const oldSkeleton = node.skeleton;
+                    if (oldSkeleton && oldSkeleton.bones) {
+                        const newBones = oldSkeleton.bones.map(b => clonedBonesByName[b.name] || b);
+                        node.bind(new THREE.Skeleton(newBones, oldSkeleton.boneInverses), node.bindMatrix);
+                    }
+                }
+            });
+            return clone;
+        }
+
+        function initActiveAvatarPreview() {
+            const canvas = document.getElementById('active-avatar-canvas');
+            if (!canvas) return;
+
+            if (previewRenderer) {
+                previewRenderer.dispose();
+                previewRenderer = null;
+            }
+
+            previewScene = new THREE.Scene();
+
+            const pAmbient = new THREE.AmbientLight('#ffffff', 0.9);
+            previewScene.add(pAmbient);
+            const pDir = new THREE.DirectionalLight('#ffffff', 0.5);
+            pDir.position.set(5, 10, 5);
+            previewScene.add(pDir);
+
+            previewCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+            previewCamera.position.set(0, 1.4, 7.5);
+            previewCamera.lookAt(0, 1.1, 0);
+
+            previewRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            previewRenderer.setSize(80, 80);
+            previewRenderer.setPixelRatio(window.devicePixelRatio || 1);
+
+            if (playerGroup) {
+                if (previewClone) {
+                    previewScene.remove(previewClone);
+                }
+                // Use robust custom model cloning to preserve local skeletal offsets
+                previewClone = cloneModelHelper(playerGroup);
+                previewClone.position.set(0, 0, 0);
+                previewClone.rotation.set(0, 0, 0);
+                previewScene.add(previewClone);
+            }
+        }
+
+        function triggerPreviewAvatarReaction() {
+            if (previewActionTimer > 0) return; // Wait for current animation sequence to finish
+            const animations = ['jump', 'sway', 'rotate_cw', 'rotate_ccw'];
+            previewAnimationType = animations[Math.floor(Math.random() * animations.length)];
+            previewActionTimer = 60; // Playback reaction sequence for 60 frames (~1s)
+        }
+
+
+        // --- MAIN RENDER AND ANIMATION LOOP ---
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = performance.now() * 0.001;
+            const delta = clock.getDelta();
+
+            // Progress custom animation mixers
+            if (mixer) mixer.update(delta);
+
+            controls.update();
+
+            // 1. ROTATE ALL ANIMAL NPCS ON THE FARM (Idle / active state slow continuous spin)
+            for (const key in npcs) {
+                const npc = npcs[key];
+                
+                if (activeStudyNpcId === npc.id) {
+                    if (npc.id === 'rabbit') {
+                        npc.group.position.y = npc.defaultY + Math.abs(Math.sin(time * 8)) * 0.45;
+                        npc.group.rotation.x = Math.sin(time * 12) * 0.1;
+                        
+                        if (carrotMesh.visible) {
+                            carrotMesh.rotation.z = Math.sin(time * 5) * 0.3;
+                            carrotMesh.position.y = npc.defaultY + 0.3 + Math.sin(time * 2) * 0.1;
+                        }
+
+                    } else if (npc.id === 'cow') {
+                        // Slowly turn around cow's center during active sequence
+                        npc.group.rotation.y = time * 0.4;
+                        
+                        if (bucketMesh.visible) {
+                            dynamicMilkDrops.forEach((drop, idx) => {
+                                drop.position.y -= 0.045;
+                                if (drop.position.y < npc.defaultY + 0.2) {
+                                    drop.position.y = npc.defaultY + 1.1;
+                                    drop.position.x = npc.group.position.x + (Math.random() - 0.5) * 0.3;
+                                    drop.position.z = npc.group.position.z + (Math.random() - 0.5) * 0.3;
+                                }
+                            });
+                        }
+
+                    } else if (npc.id === 'horse') {
+                        // TROTTING PONY ABSOLUTE BOUNDS (Centred around hex start location - no progressive coordinate drift!)
+                        const origin = hexToPixel(npc.q, npc.r);
+                        const radius = 2.0;
+                        const px = Math.cos(time * 1.5) * radius;
+                        const pz = Math.sin(time * 1.5) * radius;
+                        
+                        npc.group.position.set(origin.x + px, npc.defaultY, origin.z + pz);
+                        npc.group.lookAt(playerGroup.position);
+                    }
+                } else {
+                    // Gentle background slow rotation & bobbing on the farm grid!
+                    npc.group.position.y = npc.defaultY + Math.sin(time * 1.5 + npc.bobPhase) * 0.12;
+                    npc.group.rotation.y = time * 0.35 + npc.bobPhase; // Constant slow rotation!
+                }
+            }
+
+            // 2. GENTLE FLOAT / BOBBING ANIMATION FOR THE STUDENT AVATAR
+            if (playerGroup && !isMoving && !activeStudyNpcId) {
+                const currentTileY = hexGrid[`${playerHex.q},${playerHex.r}`]?.height || 1.0;
+                // Gently floats up and down on their tile when not actively studying or completing study side-by-side states
+                playerGroup.position.y = currentTileY + Math.sin(time * 2.8) * 0.18;
+            }
+
+            // 3. MINI VIEWPORT WEBGL preview animation sequence
+            if (previewClone) {
+                if (previewActionTimer > 0) {
+                    previewActionTimer--;
+                    const progress = (60 - previewActionTimer) / 60; // 0 to 1 S-curve timeline
+                    
+                    if (previewAnimationType === 'jump') {
+                        previewClone.position.y = Math.sin(progress * Math.PI) * 1.5;
+                        previewClone.rotation.y = 0;
+                        previewClone.rotation.z = 0;
+                    } else if (previewAnimationType === 'sway') {
+                        previewClone.position.y = 0;
+                        previewClone.rotation.z = Math.sin(progress * Math.PI * 2) * 0.4;
+                        previewClone.rotation.y = 0;
+                    } else if (previewAnimationType === 'rotate_cw') {
+                        previewClone.position.y = 0;
+                        // Smoothly look right (up to ~43 degrees / 0.75 rad) and swing back to center
+                        previewClone.rotation.y = Math.sin(progress * Math.PI) * 0.75;
+                        previewClone.rotation.z = 0;
+                    } else if (previewAnimationType === 'rotate_ccw') {
+                        previewClone.position.y = 0;
+                        // Smoothly look left (up to ~43 degrees / 0.75 rad) and swing back to center
+                        previewClone.rotation.y = -Math.sin(progress * Math.PI) * 0.75;
+                        previewClone.rotation.z = 0;
+                    }
+                } else {
+                    previewClone.position.y = Math.sin(time * 2.5) * 0.08; // Idle breathing bob
+                    previewClone.rotation.set(0, 0, 0);
+                }
+
+                if (previewRenderer && previewScene && previewCamera) {
+                    previewRenderer.render(previewScene, previewCamera);
+                }
+            }
+
+            if (particleSystem && particleSystem.visible) {
+                particleSystem.rotation.y += 0.005;
+                const positions = particleSystem.geometry.attributes.position.array;
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] += Math.sin(time + i) * 0.008;
+                }
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function toggleSidebarMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const collapsedBtn = document.getElementById('collapsed-sidebar-btn');
+            const isHidden = sidebar.classList.contains('-translate-x-full');
+            
+            if (isHidden) {
+                sidebar.classList.remove('-translate-x-full', 'absolute');
+                sidebar.classList.add('relative');
+                collapsedBtn.classList.add('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full', 'absolute');
+                sidebar.classList.remove('relative');
+                collapsedBtn.classList.remove('hidden');
+
+                if (playerHex.q === -1 && playerHex.r === -1) {
+                    hopOutOfFarmhouse();
+                }
+            }
+            setTimeout(onWindowResize, 310);
+        }
+
+        function handleFarmhouseDismissClick() {
+            if (playerHex.q === -1 && playerHex.r === -1) {
+                toggleSidebarMenu();
+            }
+        }
+
+        function hopOutOfFarmhouse() {
+            const neighbors = [
+                { q: 0, r: -1 },
+                { q: -2, r: -1 },
+                { q: -1, r: 0 },
+                { q: -1, r: -2 },
+                { q: 0, r: -2 },
+                { q: -2, r: 0 }
+            ];
+
+            let targetCell = null;
+            for (const n of neighbors) {
+                const cell = hexGrid[`${n.q},${n.r}`];
+                if (cell && !cell.isObstacle) {
+                    targetCell = n;
+                    break;
+                }
+            }
+
+            if (targetCell) {
+                executeHopToHex(targetCell.q, targetCell.r);
+                showNotification("🚶 Hopped out of the Farmhouse!", "info");
+            } else {
+                showNotification("No free adjacent tiles to exit the Farmhouse!", "error");
+            }
+        }
+
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        const collapsedBtn = document.getElementById('collapsed-sidebar-btn');
+        const sidebar = document.getElementById('sidebar');
+
+        toggleBtn.addEventListener('click', toggleSidebarMenu);
+        collapsedBtn.addEventListener('click', toggleSidebarMenu);
+
+
+        // --- STARTUP INVOCATION ---
+        window.onload = function() {
+            loadStateFromLocalStorage();
+            initGifCanvas();
+            init3D();
+        };
+    </script>
+</body>
+</html>

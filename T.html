@@ -1,0 +1,1078 @@
+<div class="htris-wp-wrapper">
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="htris-header">
+    <div class="htris-title">HeaderHeavenlyTris</div>
+    <div class="htris-subtitle">👼 Cute Angelic Marathon & Divine Practice 🕊️</div>
+  </div>
+
+  <div class="game-container">
+    
+    <div class="sidebar sidebar-left">
+      <div class="sea-card">
+        <div class="card-title">Sanctuary</div>
+        <canvas id="holdCanvas" class="preview-canvas" width="80" height="80"></canvas>
+      </div>
+
+      <div class="sea-card">
+        <div class="card-title">Grace Ledger</div>
+        
+        <div class="stat-label">Blessings</div>
+        <div id="scoreVal" class="stat-val">0</div>
+
+        <div id="levelBlock">
+          <div class="stat-label">Realm</div>
+          <div id="levelVal" class="stat-val">1</div>
+        </div>
+
+        <div class="stat-label">Purifications</div>
+        <div id="linesVal" class="stat-val">0</div>
+      </div>
+
+      <div class="sea-card">
+        <div class="card-title">Handling Input</div>
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>DAS (Shift Delay)</span>
+            <span id="dasLabel">150ms</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-tune" onclick="adjustDAS(-10)">-</button>
+            <button class="btn-tune" onclick="adjustDAS(10)">+</button>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>ARR (Repeat Rate)</span>
+            <span id="arrLabel">25ms</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-tune" onclick="adjustARR(-5)">-</button>
+            <button class="btn-tune" onclick="adjustARR(5)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-wrapper">
+      <canvas id="mainCanvas"></canvas>
+      
+      <div id="menuOverlay" class="overlay">
+        <div id="overlayTitle" class="overlay-title">Begin Ascension?</div>
+        <div id="overlayDesc" class="overlay-desc">
+          Plunge into clean, high-performance Tetris featuring custom handling, T-Spin tricks, and cozy synthesized audio.
+        </div>
+        
+        <div class="mode-selection">
+          <div id="modeMarathon" class="mode-card selected" onclick="selectMode('marathon')">
+            <div class="mode-card-title">Marathon</div>
+            <p>Clear falling elements under mounting speed and strict trials.</p>
+          </div>
+          <div id="modeZen" class="mode-card" onclick="selectMode('zen')">
+            <div class="mode-card-title">Divine Practice</div>
+            <p>Infinite relaxation. No fail state. Calibrate light speeds dynamically.</p>
+          </div>
+        </div>
+
+        <button id="overlayBtn" class="overlay-btn" onclick="handleOverlayAction()">Ascend Into Light 👼</button>
+      </div>
+    </div>
+
+    <div class="sidebar sidebar-right">
+      <div class="sea-card">
+        <div class="card-title">Prophecy Queue</div>
+        <canvas id="nextCanvas" class="preview-canvas" width="80" height="230"></canvas>
+      </div>
+
+      <div id="zenPanel" class="sea-card d-none">
+        <div class="card-title">Zen Blessings</div>
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>Gravity Velocity</span>
+            <span id="gravityLabel">1.0s</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-tune" onclick="adjustGravity(-1)">-</button>
+            <button class="btn-tune" onclick="adjustGravity(1)">+</button>
+          </div>
+        </div>
+        <button class="btn-action" onclick="zenAddGarbage()">Summon Cloud Layer ☁️</button>
+        <button class="btn-action" onclick="zenClearBoard()">Purify Matrix ✨</button>
+      </div>
+
+      <div class="sea-card control-box">
+        <div class="card-title">Pilgrim Controls</div>
+        <div class="control-row"><span>← / →</span><span>Shift Light</span></div>
+        <div class="control-row"><span>↓ Arrow</span><span>Soft Descent</span></div>
+        <div class="control-row"><span>Space</span><span>Instant Cast</span></div>
+        <div class="control-row"><span>↑ / X</span><span>Rotate CW</span></div>
+        <div class="control-row"><span>Z</span><span>Rotate CCW</span></div>
+        <div class="control-row"><span>C</span><span>Sanctuary Swap</span></div>
+        <div class="control-row"><span>V</span><span>180 Reflection</span></div>
+        <div class="control-row"><span>Esc</span><span>Meditate / Pause</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="floating-btn-container">
+    <button id="fullscreenToggle" class="utility-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">⛶</button>
+    <button id="audioToggle" class="utility-btn" onclick="toggleAudioMute()" title="Mute/Unmute Chimes">🔊</button>
+  </div>
+
+  <style>
+    .htris-wp-wrapper {
+      --holy-gold: #ffe599;
+      --seraph-pink: #ffd1dc;
+      --halo-yellow: #fff3b0;
+      --eden-green: #c1ebd0;
+      --cherub-blue: #cbe3fc;
+      --celestial-purple: #e1ccff;
+      --pure-white: #ffffff;
+      --glow-gold: #f4d068;
+      
+      margin: 0 auto;
+      padding: 20px 10px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #0e1726 0%, #17223b 40%, #2c2541 75%, #462c43 100%);
+      color: #f0f4f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80vh;
+      position: relative;
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .htris-wp-wrapper * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #bgCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .htris-header {
+      text-align: center;
+      margin-bottom: 15px;
+      z-index: 2;
+    }
+
+    .htris-title {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 38px;
+      margin: 0;
+      color: #fff;
+      text-shadow: 0 0 15px rgba(244, 208, 104, 0.6), 0 0 30px rgba(255, 255, 255, 0.4);
+      font-weight: normal;
+      letter-spacing: 3px;
+    }
+
+    .htris-subtitle {
+      font-size: 11px;
+      color: var(--glow-gold);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-top: 5px;
+    }
+
+    .game-container {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 15px;
+      max-width: 1200px;
+      width: 100%;
+      z-index: 2;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      width: 200px;
+      flex-shrink: 0;
+    }
+
+    .sea-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid rgba(244, 208, 104, 0.25);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 1px 4px rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      text-align: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .sea-card:hover {
+      border-color: rgba(244, 208, 104, 0.6);
+      box-shadow: 0 10px 30px rgba(244, 208, 104, 0.15), inset 0 1px 4px rgba(255, 255, 255, 0.2);
+    }
+
+    .card-title {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      font-weight: bold;
+      color: var(--glow-gold);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      font-size: 22px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #d1d9e6;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .preview-canvas {
+      display: block;
+      margin: 0 auto;
+      background: rgba(10, 15, 30, 0.4);
+      border-radius: 10px;
+      border: 1px solid rgba(244, 208, 104, 0.15);
+    }
+
+    .setting-group {
+      margin-bottom: 10px;
+      text-align: left;
+    }
+    .setting-label {
+      font-size: 10px;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .btn-row {
+      display: flex;
+      gap: 6px;
+    }
+    .btn-tune {
+      background: rgba(244, 208, 104, 0.12);
+      border: 1px solid rgba(244, 208, 104, 0.4);
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 4px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      flex: 1;
+      transition: background 0.2s;
+    }
+    .btn-tune:hover {
+      background: rgba(244, 208, 104, 0.35);
+    }
+
+    .btn-action {
+      background: rgba(244, 208, 104, 0.12);
+      border: 1px solid rgba(244, 208, 104, 0.4);
+      color: #fff;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 5px;
+      letter-spacing: 0.5px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-action:hover {
+      background: rgba(244, 208, 104, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .board-wrapper {
+      position: relative;
+    }
+
+    #mainCanvas {
+      background: rgba(12, 18, 33, 0.85);
+      border: 3px solid rgba(244, 208, 104, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 0 35px rgba(244, 208, 104, 0.2), 0 15px 40px rgba(0,0,0,0.5);
+      display: block;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 13px;
+      background: rgba(13, 19, 36, 0.96);
+      backdrop-filter: blur(15px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+      text-align: center;
+      padding: 15px;
+    }
+
+    .overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .overlay-title {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 26px;
+      color: var(--glow-gold);
+      text-shadow: 0 0 15px rgba(244, 208, 104, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .overlay-desc {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-bottom: 15px;
+      line-height: 1.5;
+    }
+
+    .mode-selection {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .mode-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 2px solid rgba(244, 208, 104, 0.2);
+      border-radius: 12px;
+      padding: 10px;
+      width: 130px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-card.selected {
+      background: rgba(244, 208, 104, 0.15);
+      border-color: var(--glow-gold);
+      box-shadow: 0 0 12px rgba(244, 208, 104, 0.3);
+      transform: scale(1.03);
+    }
+    .mode-card-title {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      color: #fff;
+      font-weight: bold;
+    }
+    .mode-card p {
+      margin: 0;
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+
+    .overlay-btn {
+      background: linear-gradient(135deg, #ffe599 0%, #d4af37 100%);
+      border: none;
+      color: #101626;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(244, 208, 104, 0.3);
+      transition: transform 0.2s;
+      letter-spacing: 0.5px;
+    }
+    .overlay-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      border-bottom: 1px dashed rgba(244, 208, 104, 0.15);
+      padding-bottom: 3px;
+      font-size: 10.5px;
+    }
+    .control-row span:first-child {
+      color: var(--seraph-pink);
+      font-weight: bold;
+    }
+    .control-row span:last-child {
+      color: #cbd5e1;
+    }
+
+    .floating-btn-container {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      display: flex;
+      gap: 10px;
+      z-index: 5;
+    }
+
+    .utility-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(244, 208, 104, 0.3);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--glow-gold);
+      font-size: 16px;
+      transition: background 0.3s, transform 0.2s;
+    }
+    .utility-btn:hover {
+      background: rgba(244, 208, 104, 0.2);
+      transform: scale(1.05);
+    }
+
+    .d-none { display: none !important; }
+
+    @media (max-width: 950px) {
+      .game-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .sidebar {
+        flex-direction: row;
+        width: 100%;
+        max-width: 500px;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .sea-card {
+        margin-bottom: 0;
+        flex: 1 1 140px;
+      }
+      .control-box {
+        display: none !important;
+      }
+    }
+  </style>
+
+  <script>
+    (function() {
+      const BOARD_COLS = 10;
+      const BOARD_ROWS = 22; 
+      const VISIBLE_ROWS = 20;
+
+      const TETROMINOES = {
+        I: { shape: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], color: '#cbe3fc' },
+        O: { shape: [[1,1],[1,1]], color: '#ffe599' },
+        T: { shape: [[0,1,0],[1,1,1],[0,0,0]], color: '#e1ccff' },
+        S: { shape: [[0,1,1],[1,1,0],[0,0,0]], color: '#c1ebd0' },
+        Z: { shape: [[1,1,0],[0,1,1],[0,0,0]], color: '#ffd1dc' },
+        J: { shape: [[1,0,0],[1,1,1],[0,0,0]], color: '#a4ceff' },
+        L: { shape: [[0,0,1],[1,1,1],[0,0,0]], color: '#ffdcb4' }
+      };
+
+      const KICKS_3X3 = {
+        "0->1": [[0,0], [-1,0], [-1,-1], [0,2], [-1,2]], "1->0": [[0,0], [1,0], [1,1], [0,-2], [1,-2]],
+        "1->2": [[0,0], [1,0], [1,1], [0,-2], [1,-2]], "2->1": [[0,0], [-1,0], [-1,-1], [0,2], [-1,2]],
+        "2->3": [[0,0], [1,0], [1,-1], [0,2], [1,2]], "3->2": [[0,0], [-1,0], [-1,1], [0,-2], [-1,-2]],
+        "3->0": [[0,0], [-1,0], [-1,1], [0,-2], [-1,-2]], "0->3": [[0,0], [1,0], [1,-1], [0,2], [1,2]]
+      };
+
+      const KICKS_I = {
+        "0->1": [[0,0], [-2,0], [1,0], [-2,1], [1,-2]], "1->0": [[0,0], [2,0], [-1,0], [2,-1], [-1,2]],
+        "1->2": [[0,0], [-1,0], [2,0], [-1,-2], [2,1]], "2->1": [[0,0], [1,0], [-2,0], [1,2], [-2,-1]],
+        "2->3": [[0,0], [2,0], [-1,0], [2,-1], [-1,2]], "3->2": [[0,0], [-2,0], [1,0], [-2,1], [1,-2]],
+        "3->0": [[0,0], [1,0], [-2,0], [1,2], [-2,-1]], "0->3": [[0,0], [-1,0], [2,0], [-1,-2], [2,1]]
+      };
+
+      let audioCtx = null;
+      let isMuted = false;
+
+      function initAudio() {
+        if (audioCtx) return;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      function playSound(type) {
+        if (isMuted || !audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+
+        if (type === 'move') {
+          const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+          osc.frequency.setValueAtTime(330, now); osc.frequency.exponentialRampToValueAtTime(220, now + 0.04);
+          gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now); osc.stop(now + 0.04);
+        } 
+        else if (type === 'rotate') {
+          const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now); osc.frequency.exponentialRampToValueAtTime(554.37, now + 0.08);
+          gain.gain.setValueAtTime(0.06, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now); osc.stop(now + 0.08);
+        } 
+        else if (type === 'hold') {
+          const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now); osc.frequency.exponentialRampToValueAtTime(440, now + 0.12);
+          gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        } 
+        else if (type === 'clear') {
+          [523.25, 659.25, 783.99, 1046.50].forEach((f, idx) => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.05); gain.gain.setValueAtTime(0.05, now + idx * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.2);
+            osc.start(now + idx * 0.05); osc.stop(now + idx * 0.05 + 0.2);
+          });
+        } 
+        else if (type === 'tspin') {
+          [659.25, 880, 1109.73, 1318.51].forEach((f, idx) => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.04); gain.gain.setValueAtTime(0.06, now + idx * 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.25);
+            osc.start(now + idx * 0.04); osc.stop(now + idx * 0.04 + 0.25);
+          });
+        } 
+        else if (type === 'tetris') {
+          [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98].forEach((f, idx) => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.03); gain.gain.setValueAtTime(0.06, now + idx * 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.03 + 0.35);
+            osc.start(now + idx * 0.03); osc.stop(now + idx * 0.03 + 0.35);
+          });
+        }
+        else if (type === 'perfectclear') {
+          [523.25, 783.99, 1046.50, 1567.98, 2093.00].forEach((f, idx) => {
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.06); gain.gain.setValueAtTime(0.08, now + idx * 0.06);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.5);
+            osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.5);
+          });
+        }
+        else if (type === 'gameover') {
+          const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination); osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, now); osc.frequency.linearRampToValueAtTime(110, now + 0.5);
+          gain.gain.setValueAtTime(0.1, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          osc.start(now); osc.stop(now + 0.5);
+        }
+      }
+
+      window.toggleAudioMute = function() {
+        initAudio();
+        isMuted = !isMuted;
+        document.getElementById('audioToggle').innerText = isMuted ? '🔇' : '🔊';
+      };
+
+      const wrapperEl = document.querySelector('.htris-wp-wrapper');
+      const mainCanvas = document.getElementById('mainCanvas');
+      const mainCtx = mainCanvas.getContext('2d');
+      const holdCanvas = document.getElementById('holdCanvas');
+      const holdCtx = holdCanvas.getContext('2d');
+      const nextCanvas = document.getElementById('nextCanvas');
+      const nextCtx = nextCanvas.getContext('2d');
+
+      const scoreValEl = document.getElementById('scoreVal');
+      const levelValEl = document.getElementById('levelVal');
+      const linesValEl = document.getElementById('linesVal');
+      const menuOverlay = document.getElementById('menuOverlay');
+      const overlayTitle = document.getElementById('overlayTitle');
+      const overlayDesc = document.getElementById('overlayDesc');
+      const overlayBtn = document.getElementById('overlayBtn');
+      const zenPanel = document.getElementById('zenPanel');
+      const levelBlock = document.getElementById('levelBlock');
+
+      let grid = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null));
+      let bag = []; let currentPiece = null; let holdPieceType = null;
+      let hasHeldThisTurn = false; let nextQueue = [];
+
+      let gameMode = 'marathon'; let score = 0; let level = 1; let linesClearedTotal = 0;
+      let backToBackActive = false; let comboCount = -1;
+
+      let lastTime = 0; let fallAccumulator = 0; let isSoftDropping = false; let lastMoveWasRotation = false;
+      let screenShakeValue = 0; let rowFlashLines = []; let rowFlashTimer = 0;
+      let lockDelayTimer = 0; const LOCK_DELAY_LIMIT = 500; let lockDelayResets = 0;
+
+      let keysPressed = {}; let leftPressTime = 0; let rightPressTime = 0; let lastRepeatTime = 0;
+      let DAS_DELAY = 150; let ARR_RATE = 25; let zenSliderValue = 10; let zenGravityInterval = 1000;
+
+      let particles = []; let bgBubbles = []; let floatTexts = [];
+      let isPlaying = false; let isPaused = false; let isGameOver = false;
+
+      const bgCanvas = document.getElementById('bgCanvas');
+      const bgCtx = bgCanvas.getContext('2d');
+
+      function resizeBgCanvas() {
+        bgCanvas.width = wrapperEl.clientWidth;
+        bgCanvas.height = wrapperEl.clientHeight;
+      }
+      window.addEventListener('resize', () => {
+        resizeBgCanvas();
+        resizeGame();
+      });
+
+      window.adjustDAS = function(amt) {
+        DAS_DELAY = Math.max(80, Math.min(300, DAS_DELAY + amt));
+        document.getElementById('dasLabel').innerText = DAS_DELAY + "ms";
+      };
+      window.adjustARR = function(amt) {
+        ARR_RATE = Math.max(0, Math.min(100, ARR_RATE + amt));
+        document.getElementById('arrLabel').innerText = ARR_RATE + "ms";
+      };
+      window.adjustGravity = function(amt) {
+        zenSliderValue = Math.max(0, Math.min(21, zenSliderValue + amt));
+        updateZenGravity();
+      };
+
+      window.selectMode = function(mode) {
+        gameMode = mode;
+        document.getElementById('modeMarathon').classList.remove('selected');
+        document.getElementById('modeZen').classList.remove('selected');
+        document.getElementById(mode === 'marathon' ? 'modeMarathon' : 'modeZen').classList.add('selected');
+      };
+
+      function updateZenGravity() {
+        if (zenSliderValue === 0) {
+          zenGravityInterval = 99999999;
+          document.getElementById('gravityLabel').innerText = "0G (Static)";
+        } else if (zenSliderValue === 21) {
+          zenGravityInterval = 20;
+          document.getElementById('gravityLabel').innerText = "20G (Instant)";
+        } else {
+          zenGravityInterval = Math.round(1500 * Math.pow(0.78, zenSliderValue - 1));
+          document.getElementById('gravityLabel').innerText = (zenGravityInterval / 1000).toFixed(2) + "s";
+        }
+      }
+
+      window.zenAddGarbage = function() {
+        if (!isPlaying || isPaused || isGameOver) return;
+        playSound('move'); grid.shift();
+        const hole = Math.floor(Math.random() * BOARD_COLS);
+        grid.push(Array(BOARD_COLS).fill(null).map((v, i) => i === hole ? null : '#7f8c8d'));
+        addFloatText("+1 Cloud Stratum ☁️", '#b0c4de'); drawAll();
+      };
+
+      window.zenClearBoard = function() {
+        if (!isPlaying || isPaused || isGameOver) return;
+        grid = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null));
+        addFloatText("Matrix Purified ✨", '#ffe599'); playSound('hold'); drawAll();
+      };
+
+      window.toggleFullscreen = function() {
+        if (!document.fullscreenElement) {
+          wrapperEl.requestFullscreen().then(() => {
+            document.getElementById('fullscreenToggle').innerText = '🗗';
+          }).catch(err => console.log(err));
+        } else {
+          document.exitFullscreen().then(() => {
+            document.getElementById('fullscreenToggle').innerText = '⛶';
+          });
+        }
+      };
+
+      function lightenColor(hex, percent) {
+        let num = parseInt(hex.replace("#",""), 16), amt = Math.round(2.55 * percent),
+        R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
+        return "#" + (0x1000000 + (R<255?R<0?0:R:255)*0x10000 + (G<255?G<0?0:G:255)*0x100 + (B<255?B<0?0:B:255)).toString(16).slice(1);
+      }
+
+      function drawMino(ctx, x, y, size, color, isGhost = false) {
+        ctx.save(); const radius = size * 0.35;
+        if (isGhost) {
+          ctx.fillStyle = color; ctx.globalAlpha = 0.12; ctx.beginPath();
+          ctx.roundRect(x + 2, y + 2, size - 4, size - 4, radius); ctx.fill();
+          ctx.strokeStyle = color; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.8; ctx.stroke();
+        } else {
+          let grad = ctx.createLinearGradient(x, y, x + size, y + size);
+          grad.addColorStop(0, lightenColor(color, 20)); grad.addColorStop(1, color);
+          ctx.fillStyle = grad; ctx.beginPath(); ctx.roundRect(x + 1, y + 1, size - 2, size - 2, radius); ctx.fill();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'; ctx.beginPath();
+          ctx.arc(x + size * 0.32, y + size * 0.32, size * 0.12, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1; ctx.beginPath();
+          ctx.roundRect(x + 1, y + 1, size - 2, size - 2, radius); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function refillBag() {
+        const items = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+        for (let i = items.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]];
+        }
+        bag = bag.concat(items);
+      }
+      function pullNextPiece() { if (bag.length < 12) refillBag(); return bag.shift(); }
+      function initQueues() { bag = []; refillBag(); nextQueue = []; for (let i = 0; i < 6; i++) nextQueue.push(pullNextPiece()); }
+      function getNextPiece() { const next = nextQueue.shift(); nextQueue.push(pullNextPiece()); return next; }
+
+      function spawnPiece(type = null) {
+        const pType = type || getNextPiece(); const pData = TETROMINOES[pType];
+        currentPiece = { type: pType, shape: pData.shape, color: pData.color, x: pType === 'O' ? 4 : 3, y: pType === 'I' ? 0 : 1, rotationState: 0 };
+        lastMoveWasRotation = false; lockDelayTimer = 0; lockDelayResets = 0;
+      }
+
+      function checkCollision(shape, px, py) {
+        for (let r = 0; r < shape.length; r++) {
+          for (let c = 0; c < shape[r].length; c++) {
+            if (shape[r][c]) {
+              let wx = px + c, wy = py + r;
+              if (wx < 0 || wx >= BOARD_COLS || wy >= BOARD_ROWS) return true;
+              if (wy >= 0 && grid[wy][wx] !== null) return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      function getGhostY() { let gy = currentPiece.y; while (!checkCollision(currentPiece.shape, currentPiece.x, gy + 1)) gy++; return gy; }
+      function moveLeft() { if (!checkCollision(currentPiece.shape, currentPiece.x - 1, currentPiece.y)) { currentPiece.x--; lastMoveWasRotation = false; resetLockDelay(); playSound('move'); return true; } return false; }
+      function moveRight() { if (!checkCollision(currentPiece.shape, currentPiece.x + 1, currentPiece.y)) { currentPiece.x++; lastMoveWasRotation = false; resetLockDelay(); playSound('move'); return true; } return false; }
+      function moveDown() { if (!checkCollision(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) { currentPiece.y++; lastMoveWasRotation = false; return true; } return false; }
+      function hardDrop() { let dr = 0; while (moveDown()) dr++; screenShakeValue = Math.min(8, dr * 0.6); score += dr * 2; lockPiece(); }
+      function resetLockDelay() { if (checkCollision(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) { if (lockDelayResets < 15) { lockDelayTimer = 0; lockDelayResets++; } } }
+
+      function rotateMatrixCW(m) {
+        const N = m.length; let r = Array.from({length:N},()=>Array(N).fill(0));
+        for(let i=0;i<N;i++) for(let j=0;j<N;j++) r[j][N-1-i]=m[i][j]; return r;
+      }
+      function rotateMatrixCCW(m) {
+        const N = m.length; let r = Array.from({length:N},()=>Array(N).fill(0));
+        for(let i=0;i<N;i++) for(let j=0;j<N;j++) r[N-1-j][i]=m[i][j]; return r;
+      }
+      function rotate(dir) {
+        if (currentPiece.type === 'O') return;
+        const fromState = currentPiece.rotationState; let toState; let ts = currentPiece.shape;
+        if (dir === 1) { toState = (fromState + 1) % 4; ts = rotateMatrixCW(ts); }
+        else if (dir === -1) { toState = (fromState + 3) % 4; ts = rotateMatrixCCW(ts); }
+        else if (dir === 2) { toState = (fromState + 2) % 4; ts = rotateMatrixCW(rotateMatrixCW(ts)); }
+
+        const tk = `${fromState}->${toState}`;
+        let kicks = currentPiece.type === 'I' ? (KICKS_I[tk] || []) : (KICKS_3X3[tk] || []);
+        if (!kicks.length) kicks = [[0,0], [0,-1], [0,-2], [1,0], [-1,0]];
+
+        for (let i = 0; i < kicks.length; i++) {
+          let dx = kicks[i][0], dy = kicks[i][1];
+          if (!checkCollision(ts, currentPiece.x + dx, currentPiece.y + dy)) {
+            currentPiece.x += dx; currentPiece.y += dy; currentPiece.shape = ts;
+            currentPiece.rotationState = toState; lastMoveWasRotation = true; resetLockDelay(); playSound('rotate'); return;
+          }
+        }
+      }
+
+      function checkCornerOccupied(x, y) { return (x < 0 || x >= BOARD_COLS || y >= BOARD_ROWS) ? true : (y < 0 ? false : grid[y][x] !== null); }
+      function checkTSpinOpportunity() {
+        if (currentPiece.type !== 'T' || !lastMoveWasRotation) return false;
+        const cx = currentPiece.x + 1, cy = currentPiece.y + 1;
+        return [ [cx-1,cy-1], [cx+1,cy-1], [cx-1,cy+1], [cx+1,cy+1] ].filter(([x,y]) => checkCornerOccupied(x,y)).length >= 3;
+      }
+
+      window.holdPieceAction = function() {
+        if (hasHeldThisTurn) return;
+        const th = currentPiece.type; playSound('hold');
+        if (holdPieceType === null) { holdPieceType = th; spawnPiece(); }
+        else { const prev = holdPieceType; holdPieceType = th; spawnPiece(prev); }
+        hasHeldThisTurn = true; drawHold();
+      };
+
+      function lockPiece() {
+        const isTS = checkTSpinOpportunity();
+        for (let r = 0; r < currentPiece.shape.length; r++) {
+          for (let c = 0; c < currentPiece.shape[r].length; c++) {
+            if (currentPiece.shape[r][c]) {
+              let wy = currentPiece.y + r, wx = currentPiece.x + c;
+              if (wy >= 0 && wy < BOARD_ROWS) grid[wy][wx] = currentPiece.color;
+            }
+          }
+        }
+
+        let lc = [];
+        for (let r = BOARD_ROWS - 1; r >= 0; r--) {
+          if (grid[r].every(cell => cell !== null)) lc.push(r);
+        }
+
+        if (lc.length > 0) {
+          rowFlashLines = lc.slice(); rowFlashTimer = 10;
+          triggerLightBurstClear(lc); comboCount++; awardPoints(lc.length, isTS);
+          lc.sort((a,b) => a - b).forEach(r => { grid.splice(r,1); grid.unshift(Array(BOARD_COLS).fill(null)); });
+          checkPerfectClear();
+        } else {
+          comboCount = -1; if (isTS) awardPoints(0, true);
+        }
+
+        let to = grid[0].some(c => c !== null) || grid[1].some(c => c !== null);
+        spawnPiece(); if (checkCollision(currentPiece.shape, currentPiece.x, currentPiece.y)) to = true;
+        if (to) handleGameOverOrReset();
+        hasHeldThisTurn = false; drawHold();
+      }
+
+      function checkPerfectClear() {
+        if (grid.every(row => row.every(c => c === null))) {
+          playSound('perfectclear'); addFloatText("HOLY PURITY! ⭐✨", '#ffe599');
+          for (let p = 0; p < 45; p++) {
+            particles.push({ x: Math.random() * mainCanvas.width, y: Math.random() * mainCanvas.height, vx: (Math.random()-0.5)*9, vy: (Math.random()-0.5)*9, radius: Math.random()*7+4, alpha: 1, growth: -0.01, color: '#fffebd' });
+          }
+          score += 3000 * level; updateUI();
+        }
+      }
+
+      function awardPoints(lines, isTS) {
+        let bp = 0, txt = "", diff = false;
+        if (isTS) {
+          diff = true;
+          if (lines === 0) { bp = 400; txt = "Divine Twist! ✨"; playSound('tspin'); }
+          else if (lines === 1) { bp = 800; txt = "Sanctified Single! 👼"; playSound('tspin'); }
+          else if (lines === 2) { bp = 1200; txt = "Seraphim Double! 🌀"; playSound('tspin'); }
+          else if (lines === 3) { bp = 1600; txt = "Archangel Triple! 🔱"; playSound('tspin'); }
+        } else {
+          if (lines === 1) { bp = 100; txt = "Single Cleansing! 🕊️"; playSound('clear'); }
+          else if (lines === 2) { bp = 300; txt = "Double Grace! 🌟"; playSound('clear'); }
+          else if (lines === 3) { bp = 500; txt = "Trinity Clear! 🕯️"; playSound('clear'); }
+          else if (lines === 4) { bp = 800; txt = "HEAVENLY CASCADE! 🏆"; diff = true; playSound('tetris'); }
+        }
+
+        if (lines > 0 || isTS) {
+          let calc = bp * level;
+          if (diff) { if (backToBackActive) { calc = Math.floor(calc * 1.5); txt = "B2B " + txt; } backToBackActive = true; }
+          else if (lines > 0) backToBackActive = false;
+          if (comboCount > 0) { calc += 50 * comboCount * level; txt += `\nStreak x${comboCount}! 🔥`; }
+          score += calc; linesClearedTotal += lines;
+
+          if (gameMode === 'marathon') {
+            const nl = Math.floor(linesClearedTotal / 10) + 1;
+            if (nl > level) { level = nl; addFloatText(`REALM ASCENSION: ${level}! 🐚`, '#ffe599'); }
+          }
+          addFloatText(txt, isTS ? '#e1ccff' : (lines === 4 ? '#ffe599' : '#ffffff')); updateUI();
+        }
+      }
+
+      function getGravityInterval() { return gameMode === 'zen' ? zenGravityInterval : Math.max(45, Math.pow(0.8 - (level - 1)*0.007, level - 1)*1000); }
+
+      function initBackgroundAmbient() {
+        bgBubbles = []; for (let i=0; i<30; i++) bgBubbles.push({ x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight, radius: Math.random()*4+1, speed: Math.random()*0.4+0.15, drift: (Math.random()-0.5)*0.2, alpha: Math.random()*0.3+0.05 });
+      }
+      function updateAndDrawBgBubbles() {
+        bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+        if (Math.random() < 0.04) bgBubbles.push({ x: Math.random()*bgCanvas.width, y: bgCanvas.height+10, radius: Math.random()*4+1, speed: Math.random()*0.4+0.15, drift: (Math.random()-0.5)*0.2, alpha: Math.random()*0.3+0.05 });
+        bgCtx.save();
+        for (let i = bgBubbles.length-1; i>=0; i--) {
+          let b = bgBubbles[i]; b.y -= b.speed; b.x += b.drift;
+          if (b.y < -15) { bgBubbles.splice(i,1); continue; }
+          bgCtx.fillStyle = `rgba(255, 235, 170, ${b.alpha})`; bgCtx.beginPath(); bgCtx.arc(b.x, b.y, b.radius, 0, Math.PI*2); bgCtx.fill();
+        }
+        bgCtx.restore();
+      }
+
+      function triggerLightBurstClear(lines) {
+        const cs = mainCanvas.width / BOARD_COLS;
+        lines.forEach(r => {
+          let vy = (r - 2) * cs;
+          for (let c=0; c<BOARD_COLS; c++) {
+            let vx = c * cs;
+            for (let p=0; p<3; p++) particles.push({ x: vx+cs/2+(Math.random()-0.5)*cs, y: vy+cs/2+(Math.random()-0.5)*cs, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*3-1, radius: Math.random()*4+2, alpha: 1, growth: -0.02, color: 'rgba(255, 243, 176, 0.9)' });
+          }
+        });
+      }
+
+      function updateParticles() {
+        for (let i = particles.length-1; i>=0; i--) {
+          let p = particles[i]; p.x += p.vx; p.y += p.vy; p.alpha += p.growth;
+          if (p.alpha <= 0) particles.splice(i,1);
+        }
+      }
+      function drawParticles(ctx) {
+        ctx.save();
+        particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fill(); });
+        ctx.restore();
+      }
+
+      function addFloatText(text, color) {
+        text.split('\n').forEach((txt, idx) => { floatTexts.push({ text: txt, color: color, x: mainCanvas.width/2, y: mainCanvas.height/2+(idx*24), alpha: 1, life: 80 }); });
+      }
+      function updateAndDrawFloatTexts(ctx) {
+        ctx.save();
+        for (let i = floatTexts.length-1; i>=0; i--) {
+          let f = floatTexts[i]; f.y -= 0.6; f.life--;
+          if (f.life <= 0) { floatTexts.splice(i,1); continue; }
+          ctx.font = 'bold 16px sans-serif'; ctx.fillStyle = f.color; ctx.textAlign = 'center'; ctx.globalAlpha = Math.min(1, f.life / 20);
+          ctx.fillText(f.text, f.x, f.y);
+        }
+        ctx.restore();
+      }
+
+      function resizeGame() {
+        const availableW = wrapperEl.clientWidth;
+        let availableH = window.innerHeight - 180;
+        if (document.fullscreenElement) availableH = window.innerHeight - 100;
+        let cs = Math.floor(availableH / VISIBLE_ROWS);
+
+        if (window.innerWidth < 950) {
+          cs = Math.floor((window.innerHeight * 0.4) / VISIBLE_ROWS);
+        } else {
+          const remW = availableW - 440;
+          const csW = Math.floor(remW / BOARD_COLS);
+          if (csW < cs) cs = csW;
+        }
+        cs = Math.max(16, Math.min(42, cs));
+
+        mainCanvas.width = BOARD_COLS * cs; mainCanvas.height = VISIBLE_ROWS * cs;
+        holdCanvas.width = cs * 3.6; holdCanvas.height = cs * 3.6;
+        nextCanvas.width = cs * 3.6; nextCanvas.height = cs * 10.5;
+        drawAll();
+      }
+
+      function drawHold() {
+        holdCtx.clearRect(0,0,holdCanvas.width,holdCanvas.height); if (!holdPieceType) return;
+        const pData = TETROMINOES[holdPieceType]; const sz = holdCanvas.width/4.5;
+        const ox = (holdCanvas.width - pData.shape[0].length*sz)/2, oy = (holdCanvas.height - pData.shape.length*sz)/2;
+        for (let r=0; r<pData.shape.length; r++) for (let c=0; c<pData.shape[r].length; c++) if (pData.shape[r][c]) drawMino(holdCtx, ox+c*sz, oy+r*sz, sz, pData.color);
+      }
+
+      function drawNext() {
+        nextCtx.clearRect(0,0,nextCanvas.width,nextCanvas.height); const sz = nextCanvas.width/4.5;
+        for (let i=0; i<5; i++) {
+          let pt = nextQueue[i]; if (!pt) continue;
+          let pData = TETROMINOES[pt]; let ox = (nextCanvas.width - pData.shape[0].length*sz)/2, oy = 10 + i*(sz*2.8);
+          for (let r=0; r<pData.shape.length; r++) for (let c=0; c<pData.shape[r].length; c++) if (pData.shape[r][c]) drawMino(nextCtx, ox+c*sz, oy+r*sz, sz, pData.color);
+        }
+      }
+
+      function drawAll() {
+        mainCtx.save();
+        if (screenShakeValue > 0.05) { mainCtx.translate((Math.random()-0.5)*screenShakeValue, (Math.random()-0.5)*screenShakeValue); screenShakeValue *= 0.85; }
+        mainCtx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
+        
+        mainCtx.strokeStyle = 'rgba(254, 243, 176, 0.04)'; mainCtx.lineWidth = 1; const cs = mainCanvas.width/BOARD_COLS;
+        for (let r=0; r<=VISIBLE_ROWS; r++) { mainCtx.beginPath(); mainCtx.moveTo(0, r*cs); mainCtx.lineTo(mainCanvas.width, r*cs); mainCtx.stroke(); }
+        for (let c=0; c<=BOARD_COLS; c++) { mainCtx.beginPath(); mainCtx.moveTo(c*cs, 0); mainCtx.lineTo(c*cs, mainCanvas.height); mainCtx.stroke(); }
+
+        for (let r=2; r<BOARD_ROWS; r++) for (let c=0; c<BOARD_COLS; c++) if (grid[r][c] !== null) drawMino(mainCtx, c*cs, (r-2)*cs, cs, grid[r][c]);
+
+        if (isPlaying && currentPiece) {
+          let gy = getGhostY();
+          for (let r=0; r<currentPiece.shape.length; r++) for (let c=0; c<currentPiece.shape[r].length; c++) if (currentPiece.shape[r][c] && (gy+r)>=2) drawMino(mainCtx, (currentPiece.x+c)*cs, (gy+r-2)*cs, cs, currentPiece.color, true);
+          for (let r=0; r<currentPiece.shape.length; r++) for (let c=0; c<currentPiece.shape[r].length; c++) if (currentPiece.shape[r][c] && (currentPiece.y+r)>=2) drawMino(mainCtx, (currentPiece.x+c)*cs, (currentPiece.y+r-2)*cs, cs, currentPiece.color);
+        }
+
+        if (rowFlashTimer > 0 && rowFlashLines.length > 0) {
+          mainCtx.fillStyle = `rgba(255,255,255, ${rowFlashTimer/10})`;
+          rowFlashLines.forEach(r => mainCtx.fillRect(0, (r-2)*cs, mainCanvas.width, cs)); rowFlashTimer--;
+        }
+
+        drawParticles(mainCtx); updateAndDrawFloatTexts(mainCtx); mainCtx.restore(); drawNext();
+      }
+
+      window.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { if (isGameOver) resetGame(); else togglePause(); e.preventDefault(); return; }
+        if (!isPlaying || isPaused || isGameOver) return;
+        if (keysPressed[e.key]) return; keysPressed[e.key] = true;
+        const now = performance.now();
+        switch(e.key) {
+          case 'ArrowLeft': moveLeft(); leftPressTime = now; lastRepeatTime = now; break;
+          case 'ArrowRight': moveRight(); rightPressTime = now; lastRepeatTime = now; break;
+          case 'ArrowDown': isSoftDropping = true; break;
+          case ' ': hardDrop(); e.preventDefault(); break;
+          case 'ArrowUp': case 'x': case 'X': rotate(1); e.preventDefault(); break;
+          case 'z': case 'Z': rotate(-1); break;
+          case 'c': case 'C': holdPieceAction(); break;
+          case 'v': case 'V': rotate(2); break;
+        }
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      });
+
+      window.addEventListener('keyup', e => { keysPressed[e.key] = false; if (e.key === 'ArrowDown') isSoftDropping = false; });
+
+      function handleInputsDAS(now) {
+        if (keysPressed['ArrowLeft'] && (now - leftPressTime) > DAS_DELAY && (now - lastRepeatTime) > ARR_RATE) { moveLeft(); lastRepeatTime = now; }
+        else if (keysPressed['ArrowRight'] && (now - rightPressTime) > DAS_DELAY && (now - lastRepeatTime) > ARR_RATE) { moveRight(); lastRepeatTime = now; }
+      }
+
+      function update(dt, now) {
+        handleInputsDAS(now); updateParticles(); fallAccumulator += dt;
+        const interval = isSoftDropping ? 35 : getGravityInterval();
+        if (fallAccumulator >= interval) {
+          if (!moveDown()) {
+            lockDelayTimer += dt; if (lockDelayTimer >= LOCK_DELAY_LIMIT) { lockPiece(); lockDelayTimer = 0; lockDelayResets = 0; }
+          } else { lockDelayTimer = 0; if (isSoftDropping) { score++; updateUI(); } }
+          fallAccumulator = 0;
+        } else if (checkCollision(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+          lockDelayTimer += dt; if (lockDelayTimer >= LOCK_DELAY_LIMIT) { lockPiece(); lockDelayTimer = 0; lockDelayResets = 0; }
+        } else { lockDelayTimer = 0; }
+      }
+
+      function gameLoop(ts) {
+        if (!lastTime) lastTime = ts; let dt = ts - lastTime; lastTime = ts; if (dt > 150) dt = 150;
+        updateAndDrawBgBubbles(); if (isPlaying && !isPaused && !isGameOver) update(dt, ts);
+        drawAll(); requestAnimationFrame(gameLoop);
+      }
+
+      window.handleOverlayAction = function() {
+        initAudio(); if (isGameOver) resetGame(); else if (!isPlaying) playGame(); else if (isPaused) togglePause();
+      };
+
+      function playGame() {
+        isPlaying = true; isPaused = false; isGameOver = false; menuOverlay.classList.add('hidden');
+        if (gameMode === 'zen') { zenPanel.classList.remove('d-none'); levelBlock.classList.add('d-none'); updateZenGravity(); }
+        else { zenPanel.classList.add('d-none'); levelBlock.classList.remove('d-none'); }
+        spawnPiece();
+      }
+
+      function togglePause() {
+        if (!isPlaying || isGameOver) return;
+        isPaused = !isPaused;
+        if (isPaused) showOverlay("Deep Meditation 🕯️", "Take a breath! Click below or press Esc to resume your ascension.", "Resume Ascent ✨");
+        else menuOverlay.classList.add('hidden');
+      }
+
+      function showOverlay(title, desc, btnTxt) {
+        overlayTitle.innerText = title; overlayDesc.innerText = desc; overlayBtn.innerText = btnTxt; menuOverlay.classList.remove('hidden');
+      }
+
+      function handleGameOverOrReset() {
+        if (gameMode === 'zen') { grid = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null)); addFloatText("Divine Grace! 🕊️", '#ffe599'); spawnPiece(); }
+        else { isGameOver = true; playSound('gameover'); showOverlay("Ascension Complete! 🌟", `Splendid! You reached Realm ${level} and gathered ${score} blessings. Ready to journey higher?`, "Begin New Trial 🐚"); }
+      }
+
+      function resetGame() {
+        grid = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(null)); holdPieceType = null; hasHeldThisTurn = false;
+        score = 0; level = 1; linesClearedTotal = 0; backToBackActive = false; comboCount = -1; particles = []; floatTexts = [];
+        updateUI(); initQueues(); playGame();
+      }
+
+      function updateUI() { scoreValEl.innerText = score.toLocaleString(); levelValEl.innerText = level; linesValEl.innerText = linesClearedTotal; }
+
+      initBackgroundAmbient(); initQueues(); resizeGame(); updateUI(); updateZenGravity(); drawHold(); drawNext();
+      requestAnimationFrame(gameLoop);
+    })();
+  </script>
+</div>
